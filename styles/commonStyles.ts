@@ -1,89 +1,137 @@
+
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
-  primary: '#162456',    // Material Blue
-  secondary: '#193cb8',  // Darker Blue
-  accent: '#64B5F6',     // Light Blue
-  background: '#101824',  // Keeping dark background
-  backgroundAlt: '#162133',  // Keeping dark background
-  text: '#e3e3e3',       // Keeping light text
-  grey: '#90CAF9',       // Light Blue Grey
-  card: '#193cb8',       // Keeping dark card background
+  // FocusFlow color scheme - light blue/white/pastel green
+  background: '#F0F8FF',      // AliceBlue - light background
+  backgroundAlt: '#FFFFFF',   // White - card backgrounds
+  text: '#2F4F4F',           // DarkSlateGray - main text
+  textSecondary: '#696969',   // DimGray - secondary text
+  primary: '#ADD8E6',         // LightBlue - primary accent
+  secondary: '#B0E57C',       // LightGreen - secondary accent
+  accent: '#F5DEB3',          // Wheat - accent color
+  card: '#FFFFFF',            // White - card color
+  highlight: '#E0FFFF',       // LightCyan - highlight color
+  
+  // Eisenhower Matrix colors
+  urgentImportant: '#FFB6C1',     // LightPink
+  importantNotUrgent: '#98FB98',   // PaleGreen
+  urgentNotImportant: '#FFE4B5',   // Moccasin
+  neitherUrgentNorImportant: '#E6E6FA', // Lavender
+  
+  // Status colors
+  success: '#90EE90',         // LightGreen
+  warning: '#FFE4B5',         // Moccasin
+  error: '#FFB6C1',           // LightPink
+  info: '#87CEEB',            // SkyBlue
 };
 
 export const buttonStyles = StyleSheet.create({
-  instructionsButton: {
+  primary: {
     backgroundColor: colors.primary,
-    alignSelf: 'center',
-    width: '100%',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  backButton: {
-    backgroundColor: colors.backgroundAlt,
-    alignSelf: 'center',
-    width: '100%',
+  secondary: {
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outline: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
 export const commonStyles = StyleSheet.create({
-  wrapper: {
-    backgroundColor: colors.background,
-    width: '100%',
-    height: '100%',
-  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    maxWidth: 800,
-    width: '100%',
+    padding: 16,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   title: {
     fontSize: 24,
-    fontWeight: '800',
-    textAlign: 'center',
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 10
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 6,
   },
   text: {
     fontSize: 16,
-    fontWeight: '500',
     color: colors.text,
-    marginBottom: 8,
     lineHeight: 24,
-    textAlign: 'center',
+  },
+  textSecondary: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  buttonTextLight: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   section: {
-    width: '100%',
+    marginBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
-  buttonContainer: {
-    width: '100%',
+  spaceBetween: {
+    justifyContent: 'space-between',
+  },
+  center: {
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'center',
   },
-  card: {
-    backgroundColor: colors.backgroundAlt,
-    borderColor: colors.grey,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginVertical: 8,
-    width: '100%',
-    boxShadow: '0px 2px 3px rgba(0, 0, 0, 0.1)',
-    elevation: 2,
-  },
-  icon: {
-    width: 60,
-    height: 60,
-    tintColor: "white",
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
