@@ -289,7 +289,7 @@ export default function PrioritiesScreen() {
             style={styles.summaryButton}
             onPress={() => setShowAllTasks(true)}
           >
-            <IconSymbol name="list.bullet" size={20} color={colors.text} />
+            <IconSymbol name="list.bullet" size={20} color="white" />
             <Text style={styles.summaryText}>({getTotalTaskCount()})</Text>
           </TouchableOpacity>
         </View>
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
+    borderBottomColor: '#E0E0E0',
   },
   headerActions: {
     flexDirection: 'row',
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   summaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
+    color: 'white',
   },
   content: {
     flex: 1,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
+    borderBottomColor: '#E0E0E0',
   },
   cancelButton: {
     fontSize: 16,

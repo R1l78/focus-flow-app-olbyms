@@ -13,19 +13,19 @@ export default function TabLayout() {
       name: 'schedule',
       route: '/(tabs)/schedule',
       icon: 'calendar',
-      label: 'Emploi du temps',
+      label: '🕒 Emploi du temps',
     },
     {
       name: 'priorities',
       route: '/(tabs)/priorities',
       icon: 'square.grid.2x2',
-      label: 'Priorités',
+      label: '🧠 Priorités',
     },
     {
       name: 'goals',
       route: '/(tabs)/goals',
       icon: 'target',
-      label: 'Objectifs',
+      label: '🎯 Objectifs',
     },
   ];
 
@@ -35,15 +35,15 @@ export default function TabLayout() {
       <NativeTabs>
         <NativeTabs.Trigger name="schedule">
           <Icon sf="calendar" drawable="ic_calendar" />
-          <Label>Emploi du temps</Label>
+          <Label>🕒 Emploi du temps</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="priorities">
           <Icon sf="square.grid.2x2" drawable="ic_grid" />
-          <Label>Priorités</Label>
+          <Label>🧠 Priorités</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="goals">
           <Icon sf="target" drawable="ic_target" />
-          <Label>Objectifs</Label>
+          <Label>🎯 Objectifs</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     );

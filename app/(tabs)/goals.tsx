@@ -23,6 +23,7 @@ import {
   generateId, 
   formatDate 
 } from '@/utils/storage';
+import { NotificationService } from '@/utils/notificationService';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +38,11 @@ export default function GoalsScreen() {
 
   useEffect(() => {
     loadData();
+    
+    // Ensure notifications are set up when goals screen loads
+    NotificationService.initializeNotifications().catch(error => {
+      console.error('Failed to initialize notifications in goals screen:', error);
+    });
   }, []);
 
   const loadData = async () => {
@@ -374,13 +380,13 @@ export default function GoalsScreen() {
             style={styles.statsButton}
             onPress={() => setShowStatsModal(true)}
           >
-            <IconSymbol name="chart.bar" size={20} color={colors.text} />
+            <IconSymbol name="chart.bar" size={20} color="white" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setShowAddModal(true)}
           >
-            <IconSymbol name="plus" size={20} color={colors.text} />
+            <IconSymbol name="plus" size={20} color="white" />
           </TouchableOpacity>
         </View>
       </View>
@@ -518,7 +524,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
+    borderBottomColor: '#E0E0E0',
   },
   headerActions: {
     flexDirection: 'row',
@@ -730,7 +736,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
+    borderBottomColor: '#E0E0E0',
   },
   cancelButton: {
     fontSize: 16,

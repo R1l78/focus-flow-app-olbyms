@@ -2,28 +2,28 @@
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
-  // FocusFlow color scheme - light blue/white/pastel green
-  background: '#F0F8FF',      // AliceBlue - light background
-  backgroundAlt: '#FFFFFF',   // White - card backgrounds
-  text: '#2F4F4F',           // DarkSlateGray - main text
-  textSecondary: '#696969',   // DimGray - secondary text
-  primary: '#ADD8E6',         // LightBlue - primary accent
-  secondary: '#B0E57C',       // LightGreen - secondary accent
-  accent: '#F5DEB3',          // Wheat - accent color
-  card: '#FFFFFF',            // White - card color
-  highlight: '#E0FFFF',       // LightCyan - highlight color
+  // FocusFlow Premium color scheme - beige/turquoise theme
+  background: '#FAF7F0',        // Warm beige background
+  backgroundAlt: '#FFFFFF',     // White - card backgrounds
+  text: '#2C3E50',             // Dark blue-gray - main text
+  textSecondary: '#7F8C8D',     // Gray - secondary text
+  primary: '#26A69A',           // Turquoise - primary accent
+  secondary: '#80CBC4',         // Light turquoise - secondary accent
+  accent: '#FFF8DC',            // Cornsilk - accent color
+  card: '#FFFFFF',              // White - card color
+  highlight: '#E0F2F1',         // Very light turquoise - highlight color
   
-  // Eisenhower Matrix colors
-  urgentImportant: '#FFB6C1',     // LightPink
-  importantNotUrgent: '#98FB98',   // PaleGreen
-  urgentNotImportant: '#FFE4B5',   // Moccasin
-  neitherUrgentNorImportant: '#E6E6FA', // Lavender
+  // Eisenhower Matrix colors (softer, premium versions)
+  urgentImportant: '#FFCDD2',      // Light red
+  importantNotUrgent: '#C8E6C9',   // Light green
+  urgentNotImportant: '#FFE0B2',   // Light orange
+  neitherUrgentNorImportant: '#E1BEE7', // Light purple
   
   // Status colors
-  success: '#90EE90',         // LightGreen
-  warning: '#FFE4B5',         // Moccasin
-  error: '#FFB6C1',           // LightPink
-  info: '#87CEEB',            // SkyBlue
+  success: '#4CAF50',           // Green
+  warning: '#FF9800',           // Orange
+  error: '#F44336',             // Red
+  info: '#2196F3',              // Blue
 };
 
 export const buttonStyles = StyleSheet.create({
