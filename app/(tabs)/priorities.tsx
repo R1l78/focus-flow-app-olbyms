@@ -67,6 +67,7 @@ export default function PrioritiesScreen() {
     // Filter out completed tasks
     const activeTasks = loadedTasks.filter(task => !task.completed);
     setTasks(activeTasks);
+    console.log('Tasks loaded in priorities:', activeTasks.length);
   };
 
   const saveTasksToStorage = async (newTasks: Task[]) => {
@@ -74,6 +75,7 @@ export default function PrioritiesScreen() {
     // Only show active tasks in the UI
     const activeTasks = newTasks.filter(task => !task.completed);
     setTasks(activeTasks);
+    console.log('Tasks saved in priorities:', newTasks.length);
   };
 
   const addTask = async () => {
@@ -101,6 +103,7 @@ export default function PrioritiesScreen() {
   };
 
   const completeTask = async (taskId: string) => {
+    console.log('Complete task called for:', taskId);
     // Load all tasks to update the completed one
     const allTasks = await loadTasks();
     const updatedTasks = allTasks.map(task =>
@@ -112,6 +115,7 @@ export default function PrioritiesScreen() {
   };
 
   const deleteTask = async (taskId: string) => {
+    console.log('Delete task called for:', taskId);
     Alert.alert(
       'Supprimer la tâche',
       'Êtes-vous sûr de vouloir supprimer cette tâche ?',
@@ -121,9 +125,11 @@ export default function PrioritiesScreen() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
+            console.log('Deleting task:', taskId);
             const allTasks = await loadTasks();
             const updatedTasks = allTasks.filter(task => task.id !== taskId);
             await saveTasksToStorage(updatedTasks);
+            console.log('Task deleted successfully');
           },
         },
       ]
@@ -131,6 +137,7 @@ export default function PrioritiesScreen() {
   };
 
   const moveTask = async (taskId: string, newQuadrant: Task['quadrant']) => {
+    console.log('Move task called for:', taskId, 'to', newQuadrant);
     const allTasks = await loadTasks();
     const updatedTasks = allTasks.map(task =>
       task.id === taskId ? { ...task, quadrant: newQuadrant } : task
@@ -158,14 +165,16 @@ export default function PrioritiesScreen() {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => completeTask(task.id)}
+            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
           >
-            <IconSymbol name="checkmark.circle" size={20} color={colors.success} />
+            <IconSymbol name="checkmark.circle" size={18} color={colors.success} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.deleteActionButton]}
             onPress={() => deleteTask(task.id)}
+            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
           >
-            <IconSymbol name="trash" size={16} color={colors.error} />
+            <IconSymbol name="trash" size={14} color={colors.error} />
           </TouchableOpacity>
         </View>
       </View>
@@ -259,8 +268,16 @@ export default function PrioritiesScreen() {
                       <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() => completeTask(task.id)}
+                        hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
                       >
                         <IconSymbol name="checkmark.circle" size={20} color={colors.success} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.deleteActionButton]}
+                        onPress={() => deleteTask(task.id)}
+                        hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+                      >
+                        <IconSymbol name="trash" size={16} color={colors.error} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -486,10 +503,14 @@ const styles = StyleSheet.create({
   },
   taskActions: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 6,
   },
   actionButton: {
-    padding: 2,
+    padding: 4,
+    borderRadius: 4,
+  },
+  deleteActionButton: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
   },
   moveOptions: {
     flexDirection: 'row',

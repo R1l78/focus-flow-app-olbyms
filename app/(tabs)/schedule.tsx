@@ -59,11 +59,13 @@ export default function ScheduleScreen() {
   const loadEventsFromStorage = async () => {
     const loadedEvents = await loadEvents();
     setEvents(loadedEvents);
+    console.log('Events loaded in schedule:', loadedEvents.length);
   };
 
   const saveEventsToStorage = async (newEvents: Event[]) => {
     await saveEvents(newEvents);
     setEvents(newEvents);
+    console.log('Events saved in schedule:', newEvents.length);
   };
 
   const addEvent = async () => {
@@ -98,6 +100,7 @@ export default function ScheduleScreen() {
   };
 
   const deleteEvent = async (eventId: string) => {
+    console.log('Delete event called for:', eventId);
     Alert.alert(
       'Supprimer l\'événement',
       'Êtes-vous sûr de vouloir supprimer cet événement ?',
@@ -107,8 +110,10 @@ export default function ScheduleScreen() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
+            console.log('Deleting event:', eventId);
             const updatedEvents = events.filter(event => event.id !== eventId);
             await saveEventsToStorage(updatedEvents);
+            console.log('Event deleted successfully');
           },
         },
       ]
@@ -206,7 +211,7 @@ export default function ScheduleScreen() {
                       const height = Math.max((duration / 60) * 60, 30); // Minimum 30px height
                       
                       return (
-                        <TouchableOpacity
+                        <View
                           key={event.id}
                           style={[
                             styles.timeGridEvent,
@@ -216,18 +221,28 @@ export default function ScheduleScreen() {
                               height: height,
                             }
                           ]}
-                          onLongPress={() => deleteEvent(event.id)}
                         >
-                          <Text style={styles.timeGridEventTitle} numberOfLines={2}>
-                            {event.title}
-                          </Text>
-                          <Text style={styles.timeGridEventTime}>
-                            {formatTime(eventStart)} - {formatTime(eventEnd)}
-                          </Text>
-                          {event.isRecurring && (
-                            <Text style={styles.timeGridEventRecurrence}>🔄</Text>
-                          )}
-                        </TouchableOpacity>
+                          <View style={styles.eventContent}>
+                            <View style={styles.eventInfo}>
+                              <Text style={styles.timeGridEventTitle} numberOfLines={2}>
+                                {event.title}
+                              </Text>
+                              <Text style={styles.timeGridEventTime}>
+                                {formatTime(eventStart)} - {formatTime(eventEnd)}
+                              </Text>
+                              {event.isRecurring && (
+                                <Text style={styles.timeGridEventRecurrence}>🔄</Text>
+                              )}
+                            </View>
+                            <TouchableOpacity
+                              style={styles.eventDeleteButton}
+                              onPress={() => deleteEvent(event.id)}
+                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                              <IconSymbol name="trash" size={14} color={colors.error} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
                       );
                     })}
                 </View>
@@ -253,22 +268,32 @@ export default function ScheduleScreen() {
   };
 
   const renderEvent = (event: Event) => (
-    <TouchableOpacity
+    <View
       key={event.id}
       style={[styles.eventCard, { backgroundColor: event.color }]}
-      onLongPress={() => deleteEvent(event.id)}
     >
-      <Text style={styles.eventTitle}>{event.title}</Text>
-      <Text style={styles.eventTime}>
-        {formatTime(new Date(event.startTime))} - {formatTime(new Date(event.endTime))}
-      </Text>
-      {event.isRecurring && (
-        <Text style={styles.eventRecurrence}>
-          🔄 {event.recurrenceType === 'daily' ? 'Quotidien' : 
-               event.recurrenceType === 'weekly' ? 'Hebdomadaire' : 'Mensuel'}
-        </Text>
-      )}
-    </TouchableOpacity>
+      <View style={styles.eventCardHeader}>
+        <View style={styles.eventCardInfo}>
+          <Text style={styles.eventTitle}>{event.title}</Text>
+          <Text style={styles.eventTime}>
+            {formatTime(new Date(event.startTime))} - {formatTime(new Date(event.endTime))}
+          </Text>
+          {event.isRecurring && (
+            <Text style={styles.eventRecurrence}>
+              🔄 {event.recurrenceType === 'daily' ? 'Quotidien' : 
+                   event.recurrenceType === 'weekly' ? 'Hebdomadaire' : 'Mensuel'}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity
+          style={styles.eventCardDeleteButton}
+          onPress={() => deleteEvent(event.id)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <IconSymbol name="trash" size={16} color={colors.error} />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   const renderDayView = () => {
@@ -322,12 +347,23 @@ export default function ScheduleScreen() {
                         key={event.id}
                         style={[styles.weekEventCard, { backgroundColor: event.color }]}
                       >
-                        <Text style={styles.weekEventTitle} numberOfLines={1}>
-                          {event.title}
-                        </Text>
-                        <Text style={styles.weekEventTime}>
-                          {formatTime(new Date(event.startTime))}
-                        </Text>
+                        <View style={styles.weekEventContent}>
+                          <View style={styles.weekEventInfo}>
+                            <Text style={styles.weekEventTitle} numberOfLines={1}>
+                              {event.title}
+                            </Text>
+                            <Text style={styles.weekEventTime}>
+                              {formatTime(new Date(event.startTime))}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.weekEventDeleteButton}
+                            onPress={() => deleteEvent(event.id)}
+                            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+                          >
+                            <IconSymbol name="trash" size={12} color={colors.error} />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     ))}
                 </ScrollView>
@@ -684,6 +720,15 @@ const styles = StyleSheet.create({
     ...commonStyles.shadow,
     zIndex: 1,
   },
+  eventContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  eventInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
   timeGridEventTitle: {
     fontSize: 12,
     fontWeight: '600',
@@ -699,6 +744,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 4,
+  },
+  eventDeleteButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...commonStyles.shadow,
   },
   currentTimeLine: {
     position: 'absolute',
@@ -734,6 +788,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     ...commonStyles.shadow,
   },
+  eventCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  eventCardInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
   eventTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -749,6 +812,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     fontStyle: 'italic',
+  },
+  eventCardDeleteButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...commonStyles.shadow,
   },
   weekView: {
     flex: 1,
@@ -790,6 +862,15 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 6,
   },
+  weekEventContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  weekEventInfo: {
+    flex: 1,
+    marginRight: 4,
+  },
   weekEventTitle: {
     fontSize: 12,
     fontWeight: '600',
@@ -799,6 +880,14 @@ const styles = StyleSheet.create({
   weekEventTime: {
     fontSize: 10,
     color: colors.textSecondary,
+  },
+  weekEventDeleteButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContainer: {
     backgroundColor: colors.background,
