@@ -267,6 +267,91 @@ export default function ScheduleScreen() {
     );
   };
 
+  const renderWeekTimeGrid = (date: Date, dayIndex: number) => {
+    const dayEvents = getEventsForDate(date);
+    const currentTimePosition = getCurrentTimePosition();
+    const showCurrentTimeLine = isToday(date) && currentTimePosition >= 0;
+    
+    return (
+      <View style={styles.weekDayTimeGrid}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.weekTimeGridContent}>
+            {HOURS.map((hour) => (
+              <View key={hour} style={styles.weekTimeSlot}>
+                {dayIndex === 0 && (
+                  <View style={styles.weekTimeLabel}>
+                    <Text style={styles.weekTimeLabelText}>{hour}h</Text>
+                  </View>
+                )}
+                <View style={styles.weekTimeSlotContent}>
+                  <View style={styles.weekTimeSlotLine} />
+                  {/* Events for this hour */}
+                  {dayEvents
+                    .filter(event => {
+                      const eventStart = new Date(event.startTime);
+                      return eventStart.getHours() === hour;
+                    })
+                    .map(event => {
+                      const eventStart = new Date(event.startTime);
+                      const eventEnd = new Date(event.endTime);
+                      const startMinutes = eventStart.getMinutes();
+                      const duration = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60); // minutes
+                      const height = Math.max((duration / 60) * 50, 20); // Smaller for week view
+                      
+                      return (
+                        <View
+                          key={event.id}
+                          style={[
+                            styles.weekTimeGridEvent,
+                            {
+                              backgroundColor: event.color,
+                              top: (startMinutes / 60) * 50,
+                              height: height,
+                            }
+                          ]}
+                        >
+                          <View style={styles.weekEventContent}>
+                            <View style={styles.weekEventInfo}>
+                              <Text style={styles.weekTimeGridEventTitle} numberOfLines={1}>
+                                {event.title}
+                              </Text>
+                              <Text style={styles.weekTimeGridEventTime}>
+                                {formatTime(eventStart)}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={styles.weekEventDeleteButton}
+                              onPress={() => deleteEvent(event.id)}
+                              hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+                            >
+                              <IconSymbol name="trash" size={10} color={colors.error} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })}
+                </View>
+              </View>
+            ))}
+            
+            {/* Current time indicator for week view */}
+            {showCurrentTimeLine && (
+              <View 
+                style={[
+                  styles.weekCurrentTimeLine,
+                  { top: (currentTimePosition / 60) * 50 + 10 } // Adjusted for week view
+                ]}
+              >
+                <View style={styles.weekCurrentTimeCircle} />
+                <View style={styles.weekCurrentTimeLineBar} />
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
   const renderEvent = (event: Event) => (
     <View
       key={event.id}
@@ -318,58 +403,53 @@ export default function ScheduleScreen() {
     
     return (
       <View style={styles.weekView}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {/* Week header with days */}
+        <View style={styles.weekHeader}>
+          <View style={styles.weekTimeHeaderSpace} />
           {weekDates.map((date, index) => {
-            const dayEvents = getEventsForDate(date);
             const isCurrentDay = isToday(date);
             
             return (
               <TouchableOpacity
                 key={index}
-                style={[styles.dayColumn, isCurrentDay && styles.todayColumn]}
+                style={[styles.weekDayHeader, isCurrentDay && styles.todayDayHeader]}
                 onPress={() => {
                   setSelectedDate(date);
                   setViewMode('day');
                 }}
               >
-                <Text style={[styles.dayHeader, isCurrentDay && styles.todayText]}>
+                <Text style={[styles.weekDayHeaderText, isCurrentDay && styles.todayText]}>
                   {DAYS_OF_WEEK[index]}
                 </Text>
-                <Text style={[styles.dateNumber, isCurrentDay && styles.todayText]}>
+                <Text style={[styles.weekDateNumber, isCurrentDay && styles.todayText]}>
                   {date.getDate()}
                 </Text>
-                
-                <ScrollView style={styles.dayEvents}>
-                  {dayEvents
-                    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                    .map(event => (
-                      <View
-                        key={event.id}
-                        style={[styles.weekEventCard, { backgroundColor: event.color }]}
-                      >
-                        <View style={styles.weekEventContent}>
-                          <View style={styles.weekEventInfo}>
-                            <Text style={styles.weekEventTitle} numberOfLines={1}>
-                              {event.title}
-                            </Text>
-                            <Text style={styles.weekEventTime}>
-                              {formatTime(new Date(event.startTime))}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            style={styles.weekEventDeleteButton}
-                            onPress={() => deleteEvent(event.id)}
-                            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-                          >
-                            <IconSymbol name="trash" size={12} color={colors.error} />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
-                </ScrollView>
               </TouchableOpacity>
             );
           })}
+        </View>
+
+        {/* Week time grid */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weekScrollView}>
+          <View style={styles.weekTimeGridContainer}>
+            {/* Time labels column */}
+            <View style={styles.weekTimeLabelsColumn}>
+              {HOURS.map((hour) => (
+                <View key={hour} style={styles.weekTimeSlot}>
+                  <View style={styles.weekTimeLabel}>
+                    <Text style={styles.weekTimeLabelText}>{hour}h</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Days columns */}
+            {weekDates.map((date, dayIndex) => (
+              <View key={dayIndex} style={styles.weekDayColumn}>
+                {renderWeekTimeGrid(date, dayIndex)}
+              </View>
+            ))}
+          </View>
         </ScrollView>
       </View>
     );
@@ -774,6 +854,148 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: '#FF0000',
   },
+  // Week view styles
+  weekView: {
+    flex: 1,
+    paddingVertical: 16,
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  weekTimeHeaderSpace: {
+    width: 60,
+  },
+  weekDayHeader: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginHorizontal: 2,
+    borderRadius: 8,
+  },
+  todayDayHeader: {
+    backgroundColor: colors.highlight,
+  },
+  weekDayHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  weekDateNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  todayText: {
+    color: colors.primary,
+  },
+  weekScrollView: {
+    flex: 1,
+  },
+  weekTimeGridContainer: {
+    flexDirection: 'row',
+  },
+  weekTimeLabelsColumn: {
+    width: 60,
+  },
+  weekDayColumn: {
+    width: 100,
+    marginRight: 1,
+  },
+  weekDayTimeGrid: {
+    flex: 1,
+  },
+  weekTimeGridContent: {
+    position: 'relative',
+  },
+  weekTimeSlot: {
+    flexDirection: 'row',
+    height: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  weekTimeLabel: {
+    width: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+  },
+  weekTimeLabelText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  weekTimeSlotContent: {
+    flex: 1,
+    position: 'relative',
+  },
+  weekTimeSlotLine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  weekTimeGridEvent: {
+    position: 'absolute',
+    left: 4,
+    right: 4,
+    borderRadius: 4,
+    padding: 4,
+    zIndex: 1,
+  },
+  weekEventContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  weekEventInfo: {
+    flex: 1,
+    marginRight: 4,
+  },
+  weekTimeGridEventTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 1,
+  },
+  weekTimeGridEventTime: {
+    fontSize: 8,
+    color: colors.textSecondary,
+  },
+  weekEventDeleteButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  weekCurrentTimeLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  weekCurrentTimeCircle: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF0000',
+    marginLeft: -3,
+  },
+  weekCurrentTimeLineBar: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: '#FF0000',
+  },
   eventsContainer: {
     flex: 1,
   },
@@ -821,73 +1043,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...commonStyles.shadow,
-  },
-  weekView: {
-    flex: 1,
-    paddingVertical: 16,
-  },
-  dayColumn: {
-    width: 120,
-    marginRight: 12,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 12,
-    ...commonStyles.shadow,
-  },
-  todayColumn: {
-    backgroundColor: colors.highlight,
-  },
-  dayHeader: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  dateNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  todayText: {
-    color: colors.primary,
-  },
-  dayEvents: {
-    flex: 1,
-  },
-  weekEventCard: {
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 6,
-  },
-  weekEventContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  weekEventInfo: {
-    flex: 1,
-    marginRight: 4,
-  },
-  weekEventTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  weekEventTime: {
-    fontSize: 10,
-    color: colors.textSecondary,
-  },
-  weekEventDeleteButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   modalContainer: {
     backgroundColor: colors.background,

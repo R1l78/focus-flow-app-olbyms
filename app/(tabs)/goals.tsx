@@ -52,16 +52,19 @@ export default function GoalsScreen() {
     ]);
     setGoals(loadedGoals);
     setDailyProgress(loadedProgress);
+    console.log('Goals and progress loaded:', loadedGoals.length, loadedProgress.length);
   };
 
   const saveGoalsToStorage = async (newGoals: Goal[]) => {
     await saveGoals(newGoals);
     setGoals(newGoals);
+    console.log('Goals saved:', newGoals.length);
   };
 
   const saveProgressToStorage = async (newProgress: DailyGoalProgress[]) => {
     await saveDailyProgress(newProgress);
     setDailyProgress(newProgress);
+    console.log('Progress saved:', newProgress.length);
   };
 
   const addGoal = async () => {
@@ -87,6 +90,7 @@ export default function GoalsScreen() {
   };
 
   const deleteGoal = async (goalId: string) => {
+    console.log('Delete goal called for:', goalId);
     Alert.alert(
       'Supprimer l\'objectif',
       'Êtes-vous sûr de vouloir supprimer cet objectif et tout son historique ?',
@@ -96,6 +100,7 @@ export default function GoalsScreen() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
+            console.log('Deleting goal:', goalId);
             const updatedGoals = goals.filter(goal => goal.id !== goalId);
             const updatedProgress = dailyProgress.filter(progress => progress.goalId !== goalId);
             
@@ -103,6 +108,7 @@ export default function GoalsScreen() {
               saveGoalsToStorage(updatedGoals),
               saveProgressToStorage(updatedProgress)
             ]);
+            console.log('Goal deleted successfully');
           },
         },
       ]
@@ -285,6 +291,7 @@ export default function GoalsScreen() {
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => deleteGoal(goal.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <IconSymbol name="trash" size={16} color={colors.error} />
           </TouchableOpacity>

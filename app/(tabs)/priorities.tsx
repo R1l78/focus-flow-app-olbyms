@@ -52,7 +52,7 @@ const QUADRANTS = [
 ];
 
 export default function PrioritiesScreen() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [selectedQuadrant, setSelectedQuadrant] = useState<Task['quadrant']>('urgent-important');
@@ -64,17 +64,13 @@ export default function PrioritiesScreen() {
 
   const loadTasksFromStorage = async () => {
     const loadedTasks = await loadTasks();
-    // Filter out completed tasks
-    const activeTasks = loadedTasks.filter(task => !task.completed);
-    setTasks(activeTasks);
-    console.log('Tasks loaded in priorities:', activeTasks.length);
+    setAllTasks(loadedTasks);
+    console.log('All tasks loaded in priorities:', loadedTasks.length);
   };
 
   const saveTasksToStorage = async (newTasks: Task[]) => {
     await saveTasks(newTasks);
-    // Only show active tasks in the UI
-    const activeTasks = newTasks.filter(task => !task.completed);
-    setTasks(activeTasks);
+    setAllTasks(newTasks);
     console.log('Tasks saved in priorities:', newTasks.length);
   };
 
@@ -92,8 +88,6 @@ export default function PrioritiesScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    // Load all tasks (including completed ones) to save
-    const allTasks = await loadTasks();
     const updatedTasks = [...allTasks, newTask];
     await saveTasksToStorage(updatedTasks);
     
@@ -104,8 +98,6 @@ export default function PrioritiesScreen() {
 
   const completeTask = async (taskId: string) => {
     console.log('Complete task called for:', taskId);
-    // Load all tasks to update the completed one
-    const allTasks = await loadTasks();
     const updatedTasks = allTasks.map(task =>
       task.id === taskId ? { ...task, completed: true } : task
     );
@@ -126,7 +118,6 @@ export default function PrioritiesScreen() {
           style: 'destructive',
           onPress: async () => {
             console.log('Deleting task:', taskId);
-            const allTasks = await loadTasks();
             const updatedTasks = allTasks.filter(task => task.id !== taskId);
             await saveTasksToStorage(updatedTasks);
             console.log('Task deleted successfully');
@@ -138,7 +129,6 @@ export default function PrioritiesScreen() {
 
   const moveTask = async (taskId: string, newQuadrant: Task['quadrant']) => {
     console.log('Move task called for:', taskId, 'to', newQuadrant);
-    const allTasks = await loadTasks();
     const updatedTasks = allTasks.map(task =>
       task.id === taskId ? { ...task, quadrant: newQuadrant } : task
     );
@@ -148,11 +138,11 @@ export default function PrioritiesScreen() {
   };
 
   const getTasksForQuadrant = (quadrant: Task['quadrant']): Task[] => {
-    return tasks.filter(task => task.quadrant === quadrant);
+    return allTasks.filter(task => task.quadrant === quadrant && !task.completed);
   };
 
   const getTotalTaskCount = (): number => {
-    return tasks.length;
+    return allTasks.filter(task => !task.completed).length;
   };
 
   const renderTask = (task: Task, quadrant: typeof QUADRANTS[0]) => (
