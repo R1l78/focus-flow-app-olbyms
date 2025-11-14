@@ -5,12 +5,13 @@ import {
   DarkTheme,
   DefaultTheme,
   Theme,
-  ThemeProvider,
+  ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
 import React, { useEffect } from "react";
 import { SystemBars } from "react-native-edge-to-edge";
 import * as SplashScreen from "expo-splash-screen";
 import { WidgetProvider } from "@/contexts/WidgetContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { useNetworkState } from "expo-network";
 import { useFonts } from "expo-font";
@@ -44,18 +45,20 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <WidgetProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <SystemBars style="auto" />
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="transparent-modal" options={{ presentation: 'transparentModal' }} />
-            <Stack.Screen name="formsheet" options={{ presentation: 'formSheet' }} />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </WidgetProvider>
+      <ThemeProvider>
+        <WidgetProvider>
+          <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <SystemBars style="auto" />
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="transparent-modal" options={{ presentation: 'transparentModal' }} />
+              <Stack.Screen name="formsheet" options={{ presentation: 'formSheet' }} />
+            </Stack>
+            <StatusBar style="auto" />
+          </NavigationThemeProvider>
+        </WidgetProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

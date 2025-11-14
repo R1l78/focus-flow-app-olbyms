@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/IconSymbol';
-import { colors, commonStyles } from '@/styles/commonStyles';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Goal, DailyGoalProgress, GoalStats } from '@/types';
 import { 
   saveGoals, 
@@ -24,10 +24,13 @@ import {
   formatDate 
 } from '@/utils/storage';
 import { NotificationService } from '@/utils/notificationService';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
 export default function GoalsScreen() {
+  const { colors, theme, toggleTheme } = useTheme();
+  const router = useRouter();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [dailyProgress, setDailyProgress] = useState<DailyGoalProgress[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -39,7 +42,6 @@ export default function GoalsScreen() {
   useEffect(() => {
     loadData();
     
-    // Ensure notifications are set up when goals screen loads
     NotificationService.initializeNotifications().catch(error => {
       console.error('Failed to initialize notifications in goals screen:', error);
     });
@@ -58,12 +60,14 @@ export default function GoalsScreen() {
   const saveGoalsToStorage = async (newGoals: Goal[]) => {
     await saveGoals(newGoals);
     setGoals(newGoals);
+    await NotificationService.updateDailyGoalsNotification();
     console.log('Goals saved:', newGoals.length);
   };
 
   const saveProgressToStorage = async (newProgress: DailyGoalProgress[]) => {
     await saveDailyProgress(newProgress);
     setDailyProgress(newProgress);
+    await NotificationService.updateDailyGoalsNotification();
     console.log('Progress saved:', newProgress.length);
   };
 
@@ -124,14 +128,12 @@ export default function GoalsScreen() {
     let updatedProgress: DailyGoalProgress[];
     
     if (existingProgress) {
-      // Toggle existing progress
       updatedProgress = dailyProgress.map(p =>
         p.goalId === goalId && p.date === dateStr
           ? { ...p, completed: !p.completed }
           : p
       );
     } else {
-      // Create new progress entry
       const newProgress: DailyGoalProgress = {
         date: dateStr,
         goalId,
@@ -168,7 +170,6 @@ export default function GoalsScreen() {
     const completedDays = goalProgress.filter(p => p.completed).length;
     const totalDays = goalProgress.length;
     
-    // Calculate current streak
     let currentStreak = 0;
     const sortedProgress = goalProgress
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -181,7 +182,6 @@ export default function GoalsScreen() {
       }
     }
     
-    // Calculate longest streak
     let longestStreak = 0;
     let tempStreak = 0;
     
@@ -230,31 +230,31 @@ export default function GoalsScreen() {
     });
 
     return (
-      <View style={styles.chartContainer}>
-        <Text style={commonStyles.subtitle}>Progression des 7 derniers jours</Text>
+      <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
+        <Text style={[styles.chartTitle, { color: colors.text }]}>Progression des 7 derniers jours</Text>
         
         <View style={styles.chart}>
           {lastSevenDays.map((date, index) => {
             const rate = completionRates[index];
-            const isToday = formatDate(date) === formatDate(new Date());
+            const isCurrentDay = formatDate(date) === formatDate(new Date());
             
             return (
               <View key={index} style={styles.chartDay}>
-                <View style={styles.chartBar}>
+                <View style={[styles.chartBar, { backgroundColor: colors.highlight }]}>
                   <View
                     style={[
                       styles.chartBarFill,
                       {
                         height: `${rate}%`,
-                        backgroundColor: isToday ? colors.primary : colors.secondary,
+                        backgroundColor: isCurrentDay ? colors.primary : colors.secondary,
                       }
                     ]}
                   />
                 </View>
-                <Text style={[styles.chartLabel, isToday && styles.todayLabel]}>
+                <Text style={[styles.chartLabel, { color: colors.textSecondary }, isCurrentDay && { color: colors.primary, fontWeight: '600' }]}>
                   {date.getDate()}
                 </Text>
-                <Text style={styles.chartPercentage}>{rate}%</Text>
+                <Text style={[styles.chartPercentage, { color: colors.textSecondary }]}>{rate}%</Text>
               </View>
             );
           })}
@@ -268,23 +268,23 @@ export default function GoalsScreen() {
     const stats = getGoalStats(goal.id);
     
     return (
-      <View key={goal.id} style={[styles.goalCard, isCompleted && styles.completedGoalCard]}>
+      <View key={goal.id} style={[styles.goalCard, { backgroundColor: colors.card }, isCompleted && { backgroundColor: colors.highlight }]}>
         <View style={styles.goalHeader}>
           <TouchableOpacity
             style={styles.goalCheckbox}
             onPress={() => toggleGoalProgress(goal.id, selectedDate)}
           >
-            <View style={[styles.checkbox, isCompleted && styles.checkedBox]}>
+            <View style={[styles.checkbox, { borderColor: colors.primary }, isCompleted && { backgroundColor: colors.primary }]}>
               {isCompleted && <IconSymbol name="checkmark" size={16} color="white" />}
             </View>
           </TouchableOpacity>
           
           <View style={styles.goalInfo}>
-            <Text style={[styles.goalTitle, isCompleted && styles.completedGoalTitle]}>
+            <Text style={[styles.goalTitle, { color: colors.text }, isCompleted && styles.completedGoalTitle]}>
               {goal.title}
             </Text>
             {goal.category && (
-              <Text style={styles.goalCategory}>{goal.category}</Text>
+              <Text style={[styles.goalCategory, { color: colors.textSecondary, backgroundColor: colors.accent }]}>{goal.category}</Text>
             )}
           </View>
           
@@ -299,25 +299,24 @@ export default function GoalsScreen() {
         
         <View style={styles.goalStats}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.currentStreak}</Text>
-            <Text style={styles.statLabel}>Série actuelle</Text>
+            <Text style={[styles.statValue, { color: colors.primary }]}>{stats.currentStreak}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Série actuelle</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.longestStreak}</Text>
-            <Text style={styles.statLabel}>Meilleure série</Text>
+            <Text style={[styles.statValue, { color: colors.primary }]}>{stats.longestStreak}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Meilleure série</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.completionRate}%</Text>
-            <Text style={styles.statLabel}>Taux de réussite</Text>
+            <Text style={[styles.statValue, { color: colors.primary }]}>{stats.completionRate}%</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Taux de réussite</Text>
           </View>
         </View>
         
-        {/* Mini progress bar */}
-        <View style={styles.miniProgressBar}>
+        <View style={[styles.miniProgressBar, { backgroundColor: colors.highlight }]}>
           <View
             style={[
               styles.miniProgressFill,
-              { width: `${stats.completionRate}%` }
+              { width: `${stats.completionRate}%`, backgroundColor: colors.primary }
             ]}
           />
         </View>
@@ -331,44 +330,44 @@ export default function GoalsScreen() {
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <SafeAreaView style={commonStyles.container}>
-        <View style={styles.modalHeader}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: colors.accent }]}>
           <TouchableOpacity onPress={() => setShowStatsModal(false)}>
-            <Text style={styles.cancelButton}>Fermer</Text>
+            <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Fermer</Text>
           </TouchableOpacity>
-          <Text style={commonStyles.subtitle}>Statistiques détaillées</Text>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Statistiques détaillées</Text>
           <View style={{ width: 60 }} />
         </View>
         
         <ScrollView style={styles.statsContent}>
           {renderProgressChart()}
           
-          <View style={styles.overallStats}>
-            <Text style={commonStyles.subtitle}>Résumé global</Text>
+          <View style={[styles.overallStats, { backgroundColor: colors.card }]}>
+            <Text style={[styles.overallStatsTitle, { color: colors.text }]}>Résumé global</Text>
             
             <View style={styles.overallStatsGrid}>
-              <View style={styles.overallStatCard}>
-                <Text style={styles.overallStatValue}>{goals.length}</Text>
-                <Text style={styles.overallStatLabel}>Objectifs actifs</Text>
+              <View style={[styles.overallStatCard, { backgroundColor: colors.highlight }]}>
+                <Text style={[styles.overallStatValue, { color: colors.primary }]}>{goals.length}</Text>
+                <Text style={[styles.overallStatLabel, { color: colors.textSecondary }]}>Objectifs actifs</Text>
               </View>
               
-              <View style={styles.overallStatCard}>
-                <Text style={styles.overallStatValue}>{getTodayCompletionRate()}%</Text>
-                <Text style={styles.overallStatLabel}>Complétés aujourd'hui</Text>
+              <View style={[styles.overallStatCard, { backgroundColor: colors.highlight }]}>
+                <Text style={[styles.overallStatValue, { color: colors.primary }]}>{getTodayCompletionRate()}%</Text>
+                <Text style={[styles.overallStatLabel, { color: colors.textSecondary }]}>Complétés aujourd'hui</Text>
               </View>
               
-              <View style={styles.overallStatCard}>
-                <Text style={styles.overallStatValue}>
+              <View style={[styles.overallStatCard, { backgroundColor: colors.highlight }]}>
+                <Text style={[styles.overallStatValue, { color: colors.primary }]}>
                   {dailyProgress.filter(p => p.completed).length}
                 </Text>
-                <Text style={styles.overallStatLabel}>Total complétés</Text>
+                <Text style={[styles.overallStatLabel, { color: colors.textSecondary }]}>Total complétés</Text>
               </View>
               
-              <View style={styles.overallStatCard}>
-                <Text style={styles.overallStatValue}>
+              <View style={[styles.overallStatCard, { backgroundColor: colors.highlight }]}>
+                <Text style={[styles.overallStatValue, { color: colors.primary }]}>
                   {Math.max(...goals.map(g => getGoalStats(g.id).longestStreak), 0)}
                 </Text>
-                <Text style={styles.overallStatLabel}>Meilleure série</Text>
+                <Text style={[styles.overallStatLabel, { color: colors.textSecondary }]}>Meilleure série</Text>
               </View>
             </View>
           </View>
@@ -378,19 +377,33 @@ export default function GoalsScreen() {
   );
 
   return (
-    <SafeAreaView style={commonStyles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={commonStyles.title}>🎯 Objectifs quotidiens</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={[styles.header, { borderBottomColor: colors.accent }]}>
+        <Text style={[styles.goalsTitle, { color: colors.text }]}>
+          🎯 Objectifs{'\n'}Quotidiens
+        </Text>
+  
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.statsButton}
-            onPress={() => setShowStatsModal(true)}
+            style={[styles.themeButton, { backgroundColor: colors.card }]}
+            onPress={toggleTheme}
           >
-            <IconSymbol name="chart.bar" size={20} color="white" />
+            <Text style={styles.themeIcon}>{theme === 'light' ? '🌙' : '🌞'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.addButton}
+            style={[styles.pomodoroButton, { backgroundColor: colors.secondary }]}
+            onPress={() => router.push('/(tabs)/pomodoro')}
+          >
+            <Text style={styles.pomodoroIcon}>⏰</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.statsButton, { backgroundColor: colors.primary }]}
+            onPress={() => setShowStatsModal(true)}
+          >
+            <Text style={styles.statsIcon}>%</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.secondary }]}
             onPress={() => setShowAddModal(true)}
           >
             <IconSymbol name="plus" size={20} color="white" />
@@ -398,7 +411,6 @@ export default function GoalsScreen() {
         </View>
       </View>
 
-      {/* Date Navigation */}
       <View style={styles.dateNavigation}>
         <TouchableOpacity
           style={styles.navButton}
@@ -415,7 +427,7 @@ export default function GoalsScreen() {
           style={styles.dateButton}
           onPress={() => setSelectedDate(new Date())}
         >
-          <Text style={styles.dateText}>
+          <Text style={[styles.dateText, { color: colors.text }]}>
             {selectedDate.toLocaleDateString('fr-FR', { 
               weekday: 'long', 
               day: 'numeric',
@@ -436,34 +448,32 @@ export default function GoalsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Progress Overview */}
-      <View style={styles.progressOverview}>
-        <View style={styles.progressCircle}>
+      <View style={[styles.progressOverview, { backgroundColor: colors.card }]}>
+        <View style={[styles.progressCircle, { backgroundColor: colors.primary }]}>
           <Text style={styles.progressPercentage}>{getTodayCompletionRate()}%</Text>
           <Text style={styles.progressLabel}>Complétés</Text>
         </View>
         
         <View style={styles.progressDetails}>
-          <Text style={styles.progressText}>
+          <Text style={[styles.progressText, { color: colors.text }]}>
             {dailyProgress.filter(p => p.date === formatDate(selectedDate) && p.completed).length} sur {goals.length} objectifs
           </Text>
-          <Text style={styles.progressSubtext}>
+          <Text style={[styles.progressSubtext, { color: colors.textSecondary }]}>
             {formatDate(selectedDate) === formatDate(new Date()) ? 'aujourd\'hui' : 'ce jour-là'}
           </Text>
         </View>
       </View>
 
-      {/* Goals List */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {goals.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateIcon}>🎯</Text>
-            <Text style={styles.emptyStateTitle}>Aucun objectif défini</Text>
-            <Text style={styles.emptyStateText}>
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Aucun objectif défini</Text>
+            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
               Commencez par ajouter vos objectifs quotidiens pour suivre vos progrès
             </Text>
             <TouchableOpacity
-              style={styles.emptyStateButton}
+              style={[styles.emptyStateButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowAddModal(true)}
             >
               <Text style={styles.emptyStateButtonText}>Ajouter un objectif</Text>
@@ -474,28 +484,27 @@ export default function GoalsScreen() {
         )}
       </ScrollView>
 
-      {/* Add Goal Modal */}
       <Modal
         visible={showAddModal}
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={commonStyles.container}>
-          <View style={styles.modalHeader}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.accent }]}>
             <TouchableOpacity onPress={() => setShowAddModal(false)}>
-              <Text style={styles.cancelButton}>Annuler</Text>
+              <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Annuler</Text>
             </TouchableOpacity>
-            <Text style={commonStyles.subtitle}>Nouvel objectif</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Nouvel objectif</Text>
             <TouchableOpacity onPress={addGoal}>
-              <Text style={styles.saveButton}>Ajouter</Text>
+              <Text style={[styles.saveButton, { color: colors.primary }]}>Ajouter</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.modalContent}>
             <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Titre de l'objectif</Text>
+              <Text style={[styles.formLabel, { color: colors.text }]}>Titre de l'objectif</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { borderColor: colors.accent, color: colors.text, backgroundColor: colors.card }]}
                 value={newGoalTitle}
                 onChangeText={setNewGoalTitle}
                 placeholder="Ex: Faire du sport, Lire 30 minutes..."
@@ -504,9 +513,9 @@ export default function GoalsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Catégorie (optionnel)</Text>
+              <Text style={[styles.formLabel, { color: colors.text }]}>Catégorie (optionnel)</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { borderColor: colors.accent, color: colors.text, backgroundColor: colors.card }]}
                 value={newGoalCategory}
                 onChangeText={setNewGoalCategory}
                 placeholder="Ex: Santé, Apprentissage, Travail..."
@@ -517,13 +526,15 @@ export default function GoalsScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* Stats Modal */}
       {renderStatsModal()}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -531,25 +542,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
-  statsButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 20,
+  themeButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addButton: {
-    backgroundColor: colors.secondary,
-    borderRadius: 20,
+  themeIcon: {
+    fontSize: 20,
+  },
+  pomodoroButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pomodoroIcon: {
+    fontSize: 18,
+  },
+  statsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsIcon: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -570,24 +603,25 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     textTransform: 'capitalize',
   },
   progressOverview: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     padding: 16,
-    ...commonStyles.shadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   progressCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -608,26 +642,24 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 4,
   },
   progressSubtext: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   content: {
     flex: 1,
     paddingHorizontal: 16,
   },
   goalCard: {
-    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    ...commonStyles.shadow,
-  },
-  completedGoalCard: {
-    backgroundColor: colors.highlight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   goalHeader: {
     flexDirection: 'row',
@@ -641,13 +673,9 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: colors.primary,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  checkedBox: {
-    backgroundColor: colors.primary,
   },
   goalInfo: {
     flex: 1,
@@ -655,7 +683,6 @@ const styles = StyleSheet.create({
   goalTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 2,
   },
   completedGoalTitle: {
@@ -664,8 +691,6 @@ const styles = StyleSheet.create({
   },
   goalCategory: {
     fontSize: 12,
-    color: colors.textSecondary,
-    backgroundColor: colors.accent,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -685,22 +710,18 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.primary,
   },
   statLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   miniProgressBar: {
     height: 4,
-    backgroundColor: colors.highlight,
     borderRadius: 2,
     overflow: 'hidden',
   },
   miniProgressFill: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: 2,
   },
   emptyState: {
@@ -714,19 +735,16 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     paddingHorizontal: 32,
     lineHeight: 20,
   },
   emptyStateButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -743,15 +761,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   cancelButton: {
     fontSize: 16,
-    color: colors.textSecondary,
   },
   saveButton: {
     fontSize: 16,
-    color: colors.primary,
     fontWeight: '600',
   },
   modalContent: {
@@ -761,33 +780,41 @@ const styles = StyleSheet.create({
   formGroup: {
     marginBottom: 24,
   },
+  formLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.primary,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.card,
-    marginTop: 8,
   },
   statsContent: {
     flex: 1,
     padding: 16,
   },
   chartContainer: {
-    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
-    ...commonStyles.shadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
   },
   chart: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: 120,
-    marginTop: 16,
   },
   chartDay: {
     alignItems: 'center',
@@ -796,7 +823,6 @@ const styles = StyleSheet.create({
   chartBar: {
     width: 20,
     height: 80,
-    backgroundColor: colors.highlight,
     borderRadius: 10,
     justifyContent: 'flex-end',
     marginBottom: 8,
@@ -808,33 +834,33 @@ const styles = StyleSheet.create({
   },
   chartLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
     marginBottom: 2,
-  },
-  todayLabel: {
-    color: colors.primary,
-    fontWeight: '600',
   },
   chartPercentage: {
     fontSize: 10,
-    color: colors.textSecondary,
   },
   overallStats: {
-    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
-    ...commonStyles.shadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  overallStatsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
   },
   overallStatsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: 16,
   },
   overallStatCard: {
     flex: 1,
     minWidth: (width - 80) / 2,
-    backgroundColor: colors.highlight,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -842,12 +868,17 @@ const styles = StyleSheet.create({
   overallStatValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.primary,
     marginBottom: 4,
   },
   overallStatLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
     textAlign: 'center',
+  },
+  goalsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 28,
+    flexShrink: 1,
   },
 });

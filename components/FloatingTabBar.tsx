@@ -1,4 +1,3 @@
-
 import {
   View,
   Text,
@@ -18,13 +17,11 @@ import Animated, {
   withSpring,
   interpolate,
 } from 'react-native-reanimated';
-import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 
 export interface TabBarItem {
   name: string;
   route: string;
-  icon: string;
   label: string;
 }
 
@@ -39,37 +36,33 @@ export default function FloatingTabBar({
   tabs,
   containerWidth = Dimensions.get('window').width - 32,
   borderRadius = 25,
-  bottomMargin = 34,
+  bottomMargin = 10,
 }: FloatingTabBarProps) {
   const animatedIndex = useSharedValue(0);
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateX: interpolate(
-            animatedIndex.value,
-            [0, tabs.length - 1],
-            [0, containerWidth / tabs.length * (tabs.length - 1)]
-          ),
-        },
-      ],
-    };
-  });
 
-  const { colors: themeColors } = useTheme();
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: interpolate(
+          animatedIndex.value,
+          [0, tabs.length - 1],
+          [0, (containerWidth / tabs.length) * (tabs.length - 1)]
+        ),
+      },
+    ],
+  }));
+
   const pathname = usePathname();
   const router = useRouter();
 
   const handleTabPress = (route: string) => {
-    const index = tabs.findIndex(tab => tab.route === route);
-    if (index !== -1) {
-      animatedIndex.value = withSpring(index);
-    }
+    const index = tabs.findIndex((tab) => tab.route === route);
+    if (index !== -1) animatedIndex.value = withSpring(index);
     router.push(route as any);
   };
 
   const getActiveIndex = () => {
-    const activeTab = tabs.find(tab => pathname.includes(tab.name));
+    const activeTab = tabs.find((tab) => pathname.includes(tab.name));
     return activeTab ? tabs.indexOf(activeTab) : 0;
   };
 
@@ -90,7 +83,7 @@ export default function FloatingTabBar({
           },
         ]}
       >
-        {/* Active tab indicator */}
+        {/* Active tab highlight */}
         <Animated.View
           style={[
             styles.activeIndicator,
@@ -102,41 +95,32 @@ export default function FloatingTabBar({
           ]}
         />
 
-        {/* Tab buttons */}
+        {/* Tab buttons (text only) */}
         {tabs.map((tab, index) => {
           const isActive = pathname.includes(tab.name);
-          
+
           return (
             <TouchableOpacity
               key={tab.name}
-              style={[styles.tabButton, { width: containerWidth / tabs.length }]}
+              style={[
+                styles.tabButton,
+                { width: containerWidth / tabs.length },
+              ]}
               onPress={() => handleTabPress(tab.route)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <View style={styles.tabContent}>
-                <IconSymbol
-                  name={tab.icon as any}
-                  size={20}
-                  color={isActive ? colors.primary : colors.text}
-                  style={[
-                    styles.tabIcon,
-                    { opacity: isActive ? 1 : 0.6 }
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color: isActive ? colors.primary : colors.text,
-                      opacity: isActive ? 1 : 0.6,
-                      fontWeight: isActive ? '600' : '400',
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {tab.label}
-                </Text>
-              </View>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color: isActive ? colors.primary : colors.text,
+                    opacity: isActive ? 1 : 0.7,
+                    fontWeight: isActive ? '600' : '400',
+                  },
+                ]}
+              >
+                {tab.label}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -161,14 +145,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.1)',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
     overflow: 'hidden',
+    height: Platform.OS === 'ios' ? 60 : 45, // 🔧 plus compact sur Android
+    paddingVertical: Platform.OS === 'ios' ? 6 : 4,
   },
   activeIndicator: {
     position: 'absolute',
@@ -177,22 +160,12 @@ const styles = StyleSheet.create({
     margin: 4,
   },
   tabButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  tabContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  tabIcon: {
-    marginBottom: 2,
+    height: '100%',
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: Platform.OS === 'ios' ? 12 : 11,
     textAlign: 'center',
-    lineHeight: 12,
   },
 });

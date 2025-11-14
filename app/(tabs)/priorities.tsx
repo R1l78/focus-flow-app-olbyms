@@ -12,51 +12,28 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { IconSymbol } from '@/components/IconSymbol';
-import { colors, commonStyles } from '@/styles/commonStyles';
 import { Task } from '@/types';
+import { useTheme } from '@/contexts/ThemeContext';
+import { IconSymbol } from '@/components/IconSymbol';
 import { saveTasks, loadTasks, generateId } from '@/utils/storage';
 
 const { width } = Dimensions.get('window');
-const QUADRANT_WIDTH = (width - 48) / 2; // Account for padding and gap
+const QUADRANT_WIDTH = (width - 48) / 2;
 
 const QUADRANTS = [
-  {
-    key: 'urgent-important' as const,
-    title: 'Urgent & Important',
-    subtitle: 'À faire immédiatement',
-    color: colors.urgentImportant,
-    icon: '🔥',
-  },
-  {
-    key: 'important-not-urgent' as const,
-    title: 'Important mais pas urgent',
-    subtitle: 'À planifier',
-    color: colors.importantNotUrgent,
-    icon: '📋',
-  },
-  {
-    key: 'urgent-not-important' as const,
-    title: 'Urgent mais pas important',
-    subtitle: 'À déléguer',
-    color: colors.urgentNotImportant,
-    icon: '⚡',
-  },
-  {
-    key: 'neither' as const,
-    title: 'Ni urgent ni important',
-    subtitle: 'À éliminer',
-    color: colors.neitherUrgentNorImportant,
-    icon: '🗑️',
-  },
-];
+  { key: 'urgent-important', title: 'Urgent & Important', emoji: '🔥', color: '#FFCDD2' },
+  { key: 'important-not-urgent', title: 'Important', emoji: '📋', color: '#C8E6C9' },
+  { key: 'urgent-not-important', title: 'Urgent', emoji: '⚡', color: '#FFE0B2' },
+  { key: 'neither', title: 'Ni urgent ni important', emoji: '💤', color: '#E1BEE7' },
+] as const;
 
 export default function PrioritiesScreen() {
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const { colors, theme, toggleTheme } = useTheme();
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showAllTasks, setShowAllTasks] = useState(false);
-  const [selectedQuadrant, setSelectedQuadrant] = useState<Task['quadrant']>('urgent-important');
+  const [showAllTasksModal, setShowAllTasksModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [selectedQuadrant, setSelectedQuadrant] = useState<Task['quadrant']>('urgent-important');
 
   useEffect(() => {
     loadTasksFromStorage();
@@ -64,13 +41,13 @@ export default function PrioritiesScreen() {
 
   const loadTasksFromStorage = async () => {
     const loadedTasks = await loadTasks();
-    setAllTasks(loadedTasks);
-    console.log('All tasks loaded in priorities:', loadedTasks.length);
+    setTasks(loadedTasks);
+    console.log('Tasks loaded in priorities:', loadedTasks.length);
   };
 
   const saveTasksToStorage = async (newTasks: Task[]) => {
     await saveTasks(newTasks);
-    setAllTasks(newTasks);
+    setTasks(newTasks);
     console.log('Tasks saved in priorities:', newTasks.length);
   };
 
@@ -88,7 +65,7 @@ export default function PrioritiesScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    const updatedTasks = [...allTasks, newTask];
+    const updatedTasks = [...tasks, newTask];
     await saveTasksToStorage(updatedTasks);
     
     setNewTaskTitle('');
@@ -98,12 +75,9 @@ export default function PrioritiesScreen() {
 
   const completeTask = async (taskId: string) => {
     console.log('Complete task called for:', taskId);
-    const updatedTasks = allTasks.map(task =>
-      task.id === taskId ? { ...task, completed: true } : task
-    );
-    
+    const updatedTasks = tasks.filter(task => task.id !== taskId);
     await saveTasksToStorage(updatedTasks);
-    console.log('Task completed:', taskId);
+    console.log('Task completed and removed');
   };
 
   const deleteTask = async (taskId: string) => {
@@ -118,7 +92,7 @@ export default function PrioritiesScreen() {
           style: 'destructive',
           onPress: async () => {
             console.log('Deleting task:', taskId);
-            const updatedTasks = allTasks.filter(task => task.id !== taskId);
+            const updatedTasks = tasks.filter(task => task.id !== taskId);
             await saveTasksToStorage(updatedTasks);
             console.log('Task deleted successfully');
           },
@@ -128,59 +102,43 @@ export default function PrioritiesScreen() {
   };
 
   const moveTask = async (taskId: string, newQuadrant: Task['quadrant']) => {
-    console.log('Move task called for:', taskId, 'to', newQuadrant);
-    const updatedTasks = allTasks.map(task =>
+    const updatedTasks = tasks.map(task =>
       task.id === taskId ? { ...task, quadrant: newQuadrant } : task
     );
-    
     await saveTasksToStorage(updatedTasks);
-    console.log('Task moved:', taskId, 'to', newQuadrant);
+    console.log('Task moved to:', newQuadrant);
   };
 
   const getTasksForQuadrant = (quadrant: Task['quadrant']): Task[] => {
-    return allTasks.filter(task => task.quadrant === quadrant && !task.completed);
+    return tasks.filter(task => task.quadrant === quadrant && !task.completed);
   };
 
   const getTotalTaskCount = (): number => {
-    return allTasks.filter(task => !task.completed).length;
+    return tasks.filter(task => !task.completed).length;
   };
 
   const renderTask = (task: Task, quadrant: typeof QUADRANTS[0]) => (
-    <View key={task.id} style={[styles.taskCard, { backgroundColor: colors.card }]}>
-      <View style={styles.taskHeader}>
-        <Text style={styles.taskTitle} numberOfLines={2}>
-          {task.title}
-        </Text>
-        <View style={styles.taskActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => completeTask(task.id)}
-            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-          >
-            <IconSymbol name="checkmark.circle" size={18} color={colors.success} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteActionButton]}
-            onPress={() => deleteTask(task.id)}
-            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-          >
-            <IconSymbol name="trash" size={14} color={colors.error} />
-          </TouchableOpacity>
+    <View key={task.id} style={[styles.taskItem, { backgroundColor: colors.card }]}>
+      <TouchableOpacity
+        style={styles.taskCheckbox}
+        onPress={() => completeTask(task.id)}
+      >
+        <View style={[styles.checkbox, { borderColor: colors.primary }]}>
+          <IconSymbol name="checkmark" size={12} color={colors.primary} />
         </View>
-      </View>
+      </TouchableOpacity>
       
-      {/* Move to other quadrants */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moveOptions}>
-        {QUADRANTS.filter(q => q.key !== quadrant.key).map(otherQuadrant => (
-          <TouchableOpacity
-            key={otherQuadrant.key}
-            style={[styles.moveButton, { backgroundColor: otherQuadrant.color }]}
-            onPress={() => moveTask(task.id, otherQuadrant.key)}
-          >
-            <Text style={styles.moveButtonText}>{otherQuadrant.icon}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <Text style={[styles.taskText, { color: colors.text }]} numberOfLines={2}>
+        {task.title}
+      </Text>
+      
+      <TouchableOpacity
+        style={styles.taskDeleteButton}
+        onPress={() => deleteTask(task.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <IconSymbol name="trash" size={12} color={colors.error} />
+      </TouchableOpacity>
     </View>
   );
 
@@ -188,155 +146,174 @@ export default function PrioritiesScreen() {
     const quadrantTasks = getTasksForQuadrant(quadrant.key);
     
     return (
-      <View key={quadrant.key} style={[styles.quadrant, { backgroundColor: quadrant.color }]}>
+      <View
+        key={quadrant.key}
+        style={[
+          styles.quadrant,
+          { 
+            backgroundColor: quadrant.color,
+            width: QUADRANT_WIDTH,
+          }
+        ]}
+      >
         <View style={styles.quadrantHeader}>
-          <Text style={styles.quadrantIcon}>{quadrant.icon}</Text>
-          <View style={styles.quadrantTitleContainer}>
-            <Text style={styles.quadrantTitle}>{quadrant.title}</Text>
-            <Text style={styles.quadrantSubtitle}>{quadrant.subtitle}</Text>
-          </View>
-          <View style={styles.taskCount}>
+          <Text style={styles.quadrantEmoji}>{quadrant.emoji}</Text>
+          <Text style={[styles.quadrantTitle, { color: colors.text }]} numberOfLines={2}>
+            {quadrant.title}
+          </Text>
+          <View style={[styles.taskCount, { backgroundColor: colors.primary }]}>
             <Text style={styles.taskCountText}>{quadrantTasks.length}</Text>
           </View>
         </View>
         
-        <ScrollView style={styles.quadrantTasks} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.quadrantContent} showsVerticalScrollIndicator={false}>
           {quadrantTasks.length === 0 ? (
-            <Text style={styles.noTasksText}>Aucune tâche</Text>
+            <Text style={[styles.emptyQuadrant, { color: colors.textSecondary }]}>
+              Aucune tâche
+            </Text>
           ) : (
             quadrantTasks.map(task => renderTask(task, quadrant))
           )}
-          
-          {/* Add task button */}
-          <TouchableOpacity
-            style={styles.addTaskButton}
-            onPress={() => {
-              setSelectedQuadrant(quadrant.key);
-              setShowAddModal(true);
-            }}
-          >
-            <IconSymbol name="plus" size={20} color={colors.textSecondary} />
-            <Text style={styles.addTaskText}>Ajouter une tâche</Text>
-          </TouchableOpacity>
         </ScrollView>
+        
+        <TouchableOpacity
+          style={[styles.addTaskButton, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            setSelectedQuadrant(quadrant.key);
+            setShowAddModal(true);
+          }}
+        >
+          <IconSymbol name="plus" size={16} color="white" />
+        </TouchableOpacity>
       </View>
     );
   };
 
   const renderAllTasksList = () => (
     <Modal
-      visible={showAllTasks}
+      visible={showAllTasksModal}
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <SafeAreaView style={commonStyles.container}>
-        <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={() => setShowAllTasks(false)}>
-            <Text style={styles.cancelButton}>Fermer</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: colors.accent }]}>
+          <TouchableOpacity onPress={() => setShowAllTasksModal(false)}>
+            <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Fermer</Text>
           </TouchableOpacity>
-          <Text style={commonStyles.subtitle}>Toutes les tâches</Text>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Toutes les tâches</Text>
           <View style={{ width: 60 }} />
         </View>
         
-        <ScrollView style={styles.allTasksList}>
+        <ScrollView style={styles.allTasksContent}>
           {QUADRANTS.map(quadrant => {
             const quadrantTasks = getTasksForQuadrant(quadrant.key);
             if (quadrantTasks.length === 0) return null;
             
             return (
-              <View key={quadrant.key} style={styles.taskSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionIcon}>{quadrant.icon}</Text>
-                  <Text style={styles.sectionTitle}>{quadrant.title}</Text>
-                  <Text style={styles.sectionCount}>({quadrantTasks.length})</Text>
+              <View key={quadrant.key} style={styles.allTasksSection}>
+                <View style={styles.allTasksSectionHeader}>
+                  <Text style={styles.allTasksEmoji}>{quadrant.emoji}</Text>
+                  <Text style={[styles.allTasksSectionTitle, { color: colors.text }]}>
+                    {quadrant.title}
+                  </Text>
+                  <View style={[styles.allTasksCount, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.allTasksCountText}>{quadrantTasks.length}</Text>
+                  </View>
                 </View>
                 
                 {quadrantTasks.map(task => (
-                  <View key={task.id} style={[styles.listTaskCard, { borderLeftColor: quadrant.color }]}>
-                    <Text style={styles.listTaskTitle}>{task.title}</Text>
-                    <View style={styles.listTaskActions}>
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => completeTask(task.id)}
-                        hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-                      >
-                        <IconSymbol name="checkmark.circle" size={20} color={colors.success} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.deleteActionButton]}
-                        onPress={() => deleteTask(task.id)}
-                        hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-                      >
-                        <IconSymbol name="trash" size={16} color={colors.error} />
-                      </TouchableOpacity>
-                    </View>
+                  <View key={task.id} style={[styles.allTaskItem, { backgroundColor: colors.card }]}>
+                    <TouchableOpacity
+                      style={styles.taskCheckbox}
+                      onPress={() => completeTask(task.id)}
+                    >
+                      <View style={[styles.checkbox, { borderColor: colors.primary }]}>
+                        <IconSymbol name="checkmark" size={12} color={colors.primary} />
+                      </View>
+                    </TouchableOpacity>
+                    
+                    <Text style={[styles.allTaskText, { color: colors.text }]}>
+                      {task.title}
+                    </Text>
+                    
+                    <TouchableOpacity
+                      style={styles.taskDeleteButton}
+                      onPress={() => deleteTask(task.id)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <IconSymbol name="trash" size={14} color={colors.error} />
+                    </TouchableOpacity>
                   </View>
                 ))}
               </View>
             );
           })}
-          
-          {getTotalTaskCount() === 0 && (
-            <Text style={[commonStyles.textSecondary, styles.noTasksOverall]}>
-              Aucune tâche en cours
-            </Text>
-          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>
   );
 
   return (
-    <SafeAreaView style={commonStyles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={commonStyles.title}>🧠 Matrice d'Eisenhower</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={[styles.header, { borderBottomColor: colors.accent }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>🧠 Matrice d'Eisenhower</Text>
+        
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.summaryButton}
-            onPress={() => setShowAllTasks(true)}
+            style={[styles.themeButton, { backgroundColor: colors.card }]}
+            onPress={toggleTheme}
+          >
+            <Text style={styles.themeIcon}>{theme === 'light' ? '🌙' : '🌞'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.allTasksButton, { backgroundColor: colors.primary }]}
+            onPress={() => setShowAllTasksModal(true)}
           >
             <IconSymbol name="list.bullet" size={20} color="white" />
-            <Text style={styles.summaryText}>({getTotalTaskCount()})</Text>
+            <View style={[styles.badge, { backgroundColor: colors.secondary }]}>
+              <Text style={styles.badgeText}>{getTotalTaskCount()}</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Matrix Grid */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.matrixGrid}>
-          <View style={styles.matrixRow}>
-            {renderQuadrant(QUADRANTS[0])}
-            {renderQuadrant(QUADRANTS[1])}
-          </View>
-          <View style={styles.matrixRow}>
-            {renderQuadrant(QUADRANTS[2])}
-            {renderQuadrant(QUADRANTS[3])}
-          </View>
+        <View style={styles.matrix}>
+          {QUADRANTS.map(renderQuadrant)}
         </View>
       </ScrollView>
 
-      {/* Add Task Modal */}
       <Modal
         visible={showAddModal}
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={commonStyles.container}>
-          <View style={styles.modalHeader}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.accent }]}>
             <TouchableOpacity onPress={() => setShowAddModal(false)}>
-              <Text style={styles.cancelButton}>Annuler</Text>
+              <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Annuler</Text>
             </TouchableOpacity>
-            <Text style={commonStyles.subtitle}>Nouvelle tâche</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Nouvelle tâche</Text>
             <TouchableOpacity onPress={addTask}>
-              <Text style={styles.saveButton}>Ajouter</Text>
+              <Text style={[styles.saveButton, { color: colors.primary }]}>Ajouter</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.modalContent}>
-            {/* Quadrant Selection */}
             <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Quadrant</Text>
+              <Text style={[styles.formLabel, { color: colors.text }]}>Titre de la tâche</Text>
+              <TextInput
+                style={[styles.textInput, { borderColor: colors.accent, color: colors.text, backgroundColor: colors.card }]}
+                value={newTaskTitle}
+                onChangeText={setNewTaskTitle}
+                placeholder="Ex: Préparer la présentation..."
+                placeholderTextColor={colors.textSecondary}
+                multiline
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.text }]}>Quadrant</Text>
               <View style={styles.quadrantSelector}>
                 {QUADRANTS.map(quadrant => (
                   <TouchableOpacity
@@ -344,42 +321,31 @@ export default function PrioritiesScreen() {
                     style={[
                       styles.quadrantOption,
                       { backgroundColor: quadrant.color },
-                      selectedQuadrant === quadrant.key && styles.selectedQuadrantOption
+                      selectedQuadrant === quadrant.key && { borderColor: colors.primary, borderWidth: 3 }
                     ]}
                     onPress={() => setSelectedQuadrant(quadrant.key)}
                   >
-                    <Text style={styles.quadrantOptionIcon}>{quadrant.icon}</Text>
-                    <Text style={styles.quadrantOptionTitle}>{quadrant.title}</Text>
+                    <Text style={styles.quadrantOptionEmoji}>{quadrant.emoji}</Text>
+                    <Text style={[styles.quadrantOptionText, { color: colors.text }]} numberOfLines={2}>
+                      {quadrant.title}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
-
-            {/* Task Title */}
-            <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Titre de la tâche</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newTaskTitle}
-                onChangeText={setNewTaskTitle}
-                placeholder="Que devez-vous faire ?"
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
             </View>
           </View>
         </SafeAreaView>
       </Modal>
 
-      {/* All Tasks List Modal */}
       {renderAllTasksList()}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -387,151 +353,139 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
   },
   headerActions: {
     flexDirection: 'row',
+    gap: 12,
+  },
+  themeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  summaryButton: {
+  themeIcon: {
+    fontSize: 20,
+  },
+  allTasksButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
+    borderRadius: 20,
+    position: 'relative',
   },
-  summaryText: {
-    fontSize: 14,
-    fontWeight: '600',
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: 'white',
   },
   content: {
     flex: 1,
     padding: 16,
   },
-  matrixGrid: {
-    gap: 16,
-  },
-  matrixRow: {
+  matrix: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
   },
   quadrant: {
-    width: QUADRANT_WIDTH,
-    height: 300,
     borderRadius: 12,
     padding: 12,
-    ...commonStyles.shadow,
+    minHeight: 250,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   quadrantHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
   },
-  quadrantIcon: {
+  quadrantEmoji: {
     fontSize: 20,
-  },
-  quadrantTitleContainer: {
-    flex: 1,
+    marginRight: 8,
   },
   quadrantTitle: {
+    flex: 1,
     fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '600',
     lineHeight: 18,
   },
-  quadrantSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
   taskCount: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    width: 24,
+    minWidth: 24,
     height: 24,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 8,
   },
   taskCountText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.text,
+    color: 'white',
   },
-  quadrantTasks: {
+  quadrantContent: {
     flex: 1,
+    marginBottom: 8,
   },
-  noTasksText: {
+  emptyQuadrant: {
     fontSize: 12,
-    color: colors.textSecondary,
+    fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 20,
-    fontStyle: 'italic',
   },
-  taskCard: {
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 8,
-    ...commonStyles.shadow,
-  },
-  taskHeader: {
+  taskItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 8,
   },
-  taskTitle: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    lineHeight: 16,
+  taskCheckbox: {
     marginRight: 8,
   },
-  taskActions: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  actionButton: {
-    padding: 4,
-    borderRadius: 4,
-  },
-  deleteActionButton: {
-    backgroundColor: 'rgba(244, 67, 54, 0.1)',
-  },
-  moveOptions: {
-    flexDirection: 'row',
-  },
-  moveButton: {
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 4,
   },
-  moveButtonText: {
+  taskText: {
+    flex: 1,
     fontSize: 12,
+    lineHeight: 16,
+  },
+  taskDeleteButton: {
+    padding: 4,
   },
   addTaskButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 8,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-  },
-  addTaskText: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    alignItems: 'center',
+    alignSelf: 'center',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -540,15 +494,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   cancelButton: {
     fontSize: 16,
-    color: colors.textSecondary,
   },
   saveButton: {
     fontSize: 16,
-    color: colors.primary,
     fontWeight: '600',
   },
   modalContent: {
@@ -558,91 +513,90 @@ const styles = StyleSheet.create({
   formGroup: {
     marginBottom: 24,
   },
-  quadrantSelector: {
-    gap: 12,
-    marginTop: 8,
-  },
-  quadrantOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    gap: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  selectedQuadrantOption: {
-    borderColor: colors.text,
-  },
-  quadrantOptionIcon: {
-    fontSize: 20,
-  },
-  quadrantOptionTitle: {
-    fontSize: 14,
+  formLabel: {
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
-    flex: 1,
+    marginBottom: 8,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.primary,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.card,
-    marginTop: 8,
     minHeight: 80,
+    textAlignVertical: 'top',
   },
-  allTasksList: {
+  quadrantSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  quadrantOption: {
+    width: (width - 80) / 2,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  quadrantOptionEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  quadrantOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  allTasksContent: {
     flex: 1,
     padding: 16,
   },
-  taskSection: {
+  allTasksSection: {
     marginBottom: 24,
   },
-  sectionHeader: {
+  allTasksSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
   },
-  sectionIcon: {
-    fontSize: 18,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-  },
-  sectionCount: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  listTaskCard: {
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderLeftWidth: 4,
-    ...commonStyles.shadow,
-  },
-  listTaskTitle: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.text,
+  allTasksEmoji: {
+    fontSize: 24,
     marginRight: 8,
   },
-  listTaskActions: {
-    flexDirection: 'row',
-    gap: 8,
+  allTasksSectionTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
   },
-  noTasksOverall: {
-    textAlign: 'center',
-    marginTop: 40,
-    fontStyle: 'italic',
+  allTasksCount: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  allTasksCountText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'white',
+  },
+  allTaskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  allTaskText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

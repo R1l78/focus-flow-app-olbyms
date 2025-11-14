@@ -1,68 +1,79 @@
 
+import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
-import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
-import { Stack } from 'expo-router';
-import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
-import { colors } from '@/styles/commonStyles';
+import { TouchableOpacity } from 'react-native';
+import { IconSymbol } from '@/components/IconSymbol';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TabLayout() {
-  // Define the tabs configuration for FocusFlow
-  const tabs: TabBarItem[] = [
-    {
-      name: 'schedule',
-      route: '/(tabs)/schedule',
-      icon: 'calendar',
-      label: '🕒 Emploi du temps',
-    },
-    {
-      name: 'priorities',
-      route: '/(tabs)/priorities',
-      icon: 'square.grid.2x2',
-      label: '🧠 Priorités',
-    },
-    {
-      name: 'goals',
-      route: '/(tabs)/goals',
-      icon: 'target',
-      label: '🎯 Objectifs',
-    },
-  ];
+  const { colors, theme, toggleTheme } = useTheme();
 
-  // Use NativeTabs for iOS, custom FloatingTabBar for Android and Web
-  if (Platform.OS === 'ios') {
-    return (
-      <NativeTabs>
-        <NativeTabs.Trigger name="schedule">
-          <Icon sf="calendar" drawable="ic_calendar" />
-          <Label>🕒 Emploi du temps</Label>
-        </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="priorities">
-          <Icon sf="square.grid.2x2" drawable="ic_grid" />
-          <Label>🧠 Priorités</Label>
-        </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="goals">
-          <Icon sf="target" drawable="ic_target" />
-          <Label>🎯 Objectifs</Label>
-        </NativeTabs.Trigger>
-      </NativeTabs>
-    );
-  }
-
-  // For Android and Web, use Stack navigation with custom floating tab bar
   return (
-    <>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'none', // Remove fade animation to prevent black screen flash
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.card,
+          borderTopColor: colors.accent,
+        },
+        headerStyle: {
+          backgroundColor: colors.bg,
+        },
+        headerTintColor: colors.text,
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={toggleTheme}
+            style={{ marginRight: 16, padding: 8 }}
+          >
+            <IconSymbol
+              name={theme === 'light' ? 'moon.fill' : 'sun.max.fill'}
+              size={24}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        ),
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Accueil',
+          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" size={28} color={color} />,
         }}
-      >
-        <Stack.Screen name="schedule" />
-        <Stack.Screen name="priorities" />
-        <Stack.Screen name="goals" />
-      </Stack>
-      <FloatingTabBar tabs={tabs} />
-    </>
+      />
+      <Tabs.Screen
+        name="schedule"
+        options={{
+          title: 'Emploi du temps',
+          tabBarIcon: ({ color }) => <IconSymbol name="calendar" size={28} color={color} />,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="priorities"
+        options={{
+          title: 'Priorités',
+          tabBarIcon: ({ color }) => <IconSymbol name="square.grid.2x2" size={28} color={color} />,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="goals"
+        options={{
+          title: 'Objectifs',
+          tabBarIcon: ({ color }) => <IconSymbol name="target" size={28} color={color} />,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="pomodoro"
+        options={{
+          title: 'Pomodoro',
+          tabBarIcon: ({ color }) => <IconSymbol name="timer" size={28} color={color} />,
+          headerShown: false,
+        }}
+      />
+    </Tabs>
   );
 }

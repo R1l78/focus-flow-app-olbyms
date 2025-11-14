@@ -6,49 +6,30 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal,
-  TextInput,
   Alert,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { IconSymbol } from '@/components/IconSymbol';
-import { colors, commonStyles } from '@/styles/commonStyles';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Event } from '@/types';
 import { saveEvents, loadEvents, generateId, formatDate, formatTime } from '@/utils/storage';
-
-const COLORS = [
-  '#FFB6C1', '#98FB98', '#87CEEB', '#DDA0DD', '#F0E68C',
-  '#FFA07A', '#20B2AA', '#87CEFA', '#DEB887', '#F5DEB3'
-];
+import AddEventModal from '@/components/AddEventModal';
 
 const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-
-// Generate hours from 6 AM to 11 PM
+const SLOT_HEIGHT = 60;
 const HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
 
 export default function ScheduleScreen() {
+  const { colors, theme, toggleTheme } = useTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // Form state
-  const [title, setTitle] = useState('');
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [startTime, setStartTime] = useState(new Date());
-  const [endTime, setEndTime] = useState(new Date(Date.now() + 60 * 60 * 1000)); // 1 hour later
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceType, setRecurrenceType] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   useEffect(() => {
     loadEventsFromStorage();
     
-    // Update current time every minute
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
@@ -68,34 +49,16 @@ export default function ScheduleScreen() {
     console.log('Events saved in schedule:', newEvents.length);
   };
 
-  const addEvent = async () => {
-    if (!title.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer un titre pour l\'événement');
-      return;
-    }
-
+  const addEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>) => {
     const newEvent: Event = {
+      ...eventData,
       id: generateId(),
-      title: title.trim(),
-      color: selectedColor,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      isRecurring,
-      recurrenceType: isRecurring ? recurrenceType : undefined,
       createdAt: new Date().toISOString(),
     };
 
     const updatedEvents = [...events, newEvent];
     await saveEventsToStorage(updatedEvents);
-    
-    // Reset form
-    setTitle('');
-    setSelectedColor(COLORS[0]);
-    setStartTime(new Date());
-    setEndTime(new Date(Date.now() + 60 * 60 * 1000));
-    setIsRecurring(false);
     setShowAddModal(false);
-    
     console.log('Event added:', newEvent);
   };
 
@@ -128,7 +91,6 @@ export default function ScheduleScreen() {
       
       if (eventDateStr === dateStr) return true;
       
-      // Handle recurring events
       if (event.isRecurring && event.recurrenceType) {
         const eventStartDate = new Date(event.startTime);
         const daysDiff = Math.floor((date.getTime() - eventStartDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -153,7 +115,7 @@ export default function ScheduleScreen() {
     const week = [];
     const startOfWeek = new Date(date);
     const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
     
     for (let i = 0; i < 7; i++) {
@@ -165,16 +127,28 @@ export default function ScheduleScreen() {
     return week;
   };
 
-  const getCurrentTimePosition = (): number => {
+  const getCurrentTimePositionDay = (): number => {
     const now = currentTime;
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    
-    if (hours < 6 || hours > 23) return -1; // Outside visible hours
-    
+
+    if (hours < 6 || hours > 23) return -1;
+
     const hourIndex = hours - 6;
     const minutePercentage = minutes / 60;
-    return (hourIndex + minutePercentage) * 60; // 60px per hour
+    return (hourIndex + minutePercentage) * 60;
+  };
+
+  const getCurrentTimePositionWeek = (): number => {
+    const now = currentTime;
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+
+    if (hours < 6 || hours > 23) return -1;
+
+    const hourIndex = hours - 6;
+    const minutePercentage = minutes / 60;
+    return (hourIndex + minutePercentage) * 50;
   };
 
   const isToday = (date: Date): boolean => {
@@ -183,7 +157,7 @@ export default function ScheduleScreen() {
 
   const renderTimeGrid = () => {
     const dayEvents = getEventsForDate(selectedDate);
-    const currentTimePosition = getCurrentTimePosition();
+    const currentTimePosition = getCurrentTimePositionDay();
     const showCurrentTimeLine = isToday(selectedDate) && currentTimePosition >= 0;
     
     return (
@@ -192,12 +166,11 @@ export default function ScheduleScreen() {
           <View style={styles.timeGridContent}>
             {HOURS.map((hour) => (
               <View key={hour} style={styles.timeSlot}>
-                <View style={styles.timeLabel}>
-                  <Text style={styles.timeLabelText}>{hour}h</Text>
+                <View style={[styles.timeLabel, { backgroundColor: colors.card, borderRightColor: colors.accent }]}>
+                  <Text style={[styles.timeLabelText, { color: colors.textSecondary }]}>{hour}h</Text>
                 </View>
                 <View style={styles.timeSlotContent}>
-                  <View style={styles.timeSlotLine} />
-                  {/* Events for this hour */}
+                  <View style={[styles.timeSlotLine, { backgroundColor: colors.accent }]} />
                   {dayEvents
                     .filter(event => {
                       const eventStart = new Date(event.startTime);
@@ -207,8 +180,8 @@ export default function ScheduleScreen() {
                       const eventStart = new Date(event.startTime);
                       const eventEnd = new Date(event.endTime);
                       const startMinutes = eventStart.getMinutes();
-                      const duration = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60); // minutes
-                      const height = Math.max((duration / 60) * 60, 30); // Minimum 30px height
+                      const duration = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60);
+                      const height = Math.max((duration / 60) * 60, 30);
                       
                       return (
                         <View
@@ -224,10 +197,10 @@ export default function ScheduleScreen() {
                         >
                           <View style={styles.eventContent}>
                             <View style={styles.eventInfo}>
-                              <Text style={styles.timeGridEventTitle} numberOfLines={2}>
+                              <Text style={[styles.timeGridEventTitle, { color: colors.text }]} numberOfLines={2}>
                                 {event.title}
                               </Text>
-                              <Text style={styles.timeGridEventTime}>
+                              <Text style={[styles.timeGridEventTime, { color: colors.textSecondary }]}>
                                 {formatTime(eventStart)} - {formatTime(eventEnd)}
                               </Text>
                               {event.isRecurring && (
@@ -249,12 +222,11 @@ export default function ScheduleScreen() {
               </View>
             ))}
             
-            {/* Current time indicator */}
             {showCurrentTimeLine && (
               <View 
                 style={[
                   styles.currentTimeLine,
-                  { top: currentTimePosition + 20 } // Offset for header
+                  { top: currentTimePosition - 5 }
                 ]}
               >
                 <View style={styles.currentTimeCircle} />
@@ -269,122 +241,84 @@ export default function ScheduleScreen() {
 
   const renderWeekTimeGrid = (date: Date, dayIndex: number) => {
     const dayEvents = getEventsForDate(date);
-    const currentTimePosition = getCurrentTimePosition();
+    const currentTimePosition = getCurrentTimePositionWeek();
     const showCurrentTimeLine = isToday(date) && currentTimePosition >= 0;
-    
+
     return (
       <View style={styles.weekDayTimeGrid}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.weekTimeGridContent}>
-            {HOURS.map((hour) => (
-              <View key={hour} style={styles.weekTimeSlot}>
-                {dayIndex === 0 && (
-                  <View style={styles.weekTimeLabel}>
-                    <Text style={styles.weekTimeLabelText}>{hour}h</Text>
-                  </View>
-                )}
-                <View style={styles.weekTimeSlotContent}>
-                  <View style={styles.weekTimeSlotLine} />
-                  {/* Events for this hour */}
-                  {dayEvents
-                    .filter(event => {
-                      const eventStart = new Date(event.startTime);
-                      return eventStart.getHours() === hour;
-                    })
-                    .map(event => {
-                      const eventStart = new Date(event.startTime);
-                      const eventEnd = new Date(event.endTime);
-                      const startMinutes = eventStart.getMinutes();
-                      const duration = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60); // minutes
-                      const height = Math.max((duration / 60) * 50, 20); // Smaller for week view
-                      
-                      return (
-                        <View
-                          key={event.id}
-                          style={[
-                            styles.weekTimeGridEvent,
-                            {
-                              backgroundColor: event.color,
-                              top: (startMinutes / 60) * 50,
-                              height: height,
-                            }
-                          ]}
-                        >
-                          <View style={styles.weekEventContent}>
-                            <View style={styles.weekEventInfo}>
-                              <Text style={styles.weekTimeGridEventTitle} numberOfLines={1}>
-                                {event.title}
-                              </Text>
-                              <Text style={styles.weekTimeGridEventTime}>
-                                {formatTime(eventStart)}
-                              </Text>
-                            </View>
-                            <TouchableOpacity
-                              style={styles.weekEventDeleteButton}
-                              onPress={() => deleteEvent(event.id)}
-                              hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-                            >
-                              <IconSymbol name="trash" size={10} color={colors.error} />
-                            </TouchableOpacity>
+        <View style={styles.weekTimeGridContent}>
+          {HOURS.map((hour) => (
+            <View key={hour} style={[styles.weekTimeSlot, { height: SLOT_HEIGHT }]}>
+              <View style={styles.weekTimeSlotContent}>
+                <View style={[styles.weekTimeSlotLine, { backgroundColor: colors.accent }]} />
+                {dayEvents
+                  .filter(event => {
+                    const eventStart = new Date(event.startTime);
+                    return eventStart.getHours() === hour;
+                  })
+                  .map(event => {
+                    const eventStart = new Date(event.startTime);
+                    const eventEnd = new Date(event.endTime);
+                    const startMinutes = eventStart.getMinutes();
+                    const durationMinutes = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60);
+                    const height = Math.max((durationMinutes / 60) * SLOT_HEIGHT, 20);
+
+                    return (
+                      <View
+                        key={event.id}
+                        style={[
+                          styles.weekTimeGridEvent,
+                          {
+                            backgroundColor: event.color,
+                            top: (startMinutes / 60) * SLOT_HEIGHT,
+                            height,
+                          }
+                        ]}
+                      >
+                        <View style={styles.weekEventContent}>
+                          <View style={styles.weekEventInfo}>
+                            <Text style={[styles.weekTimeGridEventTitle, { color: colors.text }]} numberOfLines={1}>
+                              {event.title}
+                            </Text>
+                            <Text style={[styles.weekTimeGridEventTime, { color: colors.textSecondary }]}>
+                              {formatTime(eventStart)}
+                            </Text>
                           </View>
+                          <TouchableOpacity
+                            style={styles.weekEventDeleteButton}
+                            onPress={() => deleteEvent(event.id)}
+                            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+                          >
+                            <IconSymbol name="trash" size={10} color={colors.error} />
+                          </TouchableOpacity>
                         </View>
-                      );
-                    })}
-                </View>
+                      </View>
+                    );
+                  })}
               </View>
-            ))}
-            
-            {/* Current time indicator for week view */}
-            {showCurrentTimeLine && (
-              <View 
-                style={[
-                  styles.weekCurrentTimeLine,
-                  { top: (currentTimePosition / 60) * 50 + 10 } // Adjusted for week view
-                ]}
-              >
-                <View style={styles.weekCurrentTimeCircle} />
-                <View style={styles.weekCurrentTimeLineBar} />
-              </View>
-            )}
-          </View>
-        </ScrollView>
+            </View>
+          ))}
+
+          {showCurrentTimeLine && currentTimePosition >= 0 && (
+            <View
+              style={[
+                styles.weekCurrentTimeLine,
+                { top: currentTimePosition + 56 }
+              ]}
+            >
+              <View style={styles.weekCurrentTimeCircle} />
+              <View style={styles.weekCurrentTimeLineBar} />
+            </View>
+          )}
+        </View>
       </View>
     );
   };
 
-  const renderEvent = (event: Event) => (
-    <View
-      key={event.id}
-      style={[styles.eventCard, { backgroundColor: event.color }]}
-    >
-      <View style={styles.eventCardHeader}>
-        <View style={styles.eventCardInfo}>
-          <Text style={styles.eventTitle}>{event.title}</Text>
-          <Text style={styles.eventTime}>
-            {formatTime(new Date(event.startTime))} - {formatTime(new Date(event.endTime))}
-          </Text>
-          {event.isRecurring && (
-            <Text style={styles.eventRecurrence}>
-              🔄 {event.recurrenceType === 'daily' ? 'Quotidien' : 
-                   event.recurrenceType === 'weekly' ? 'Hebdomadaire' : 'Mensuel'}
-            </Text>
-          )}
-        </View>
-        <TouchableOpacity
-          style={styles.eventCardDeleteButton}
-          onPress={() => deleteEvent(event.id)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <IconSymbol name="trash" size={16} color={colors.error} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
   const renderDayView = () => {
     return (
       <View style={styles.dayView}>
-        <Text style={[commonStyles.subtitle, styles.dateHeader]}>
+        <Text style={[styles.dateHeader, { color: colors.text }]}>
           {selectedDate.toLocaleDateString('fr-FR', { 
             weekday: 'long', 
             year: 'numeric', 
@@ -400,89 +334,82 @@ export default function ScheduleScreen() {
 
   const renderWeekView = () => {
     const weekDates = getWeekDates(selectedDate);
-    
+
     return (
-      <View style={styles.weekView}>
-        {/* Week header with days */}
-        <View style={styles.weekHeader}>
-          <View style={styles.weekTimeHeaderSpace} />
-          {weekDates.map((date, index) => {
-            const isCurrentDay = isToday(date);
-            
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[styles.weekDayHeader, isCurrentDay && styles.todayDayHeader]}
-                onPress={() => {
-                  setSelectedDate(date);
-                  setViewMode('day');
-                }}
-              >
-                <Text style={[styles.weekDayHeaderText, isCurrentDay && styles.todayText]}>
-                  {DAYS_OF_WEEK[index]}
-                </Text>
-                <Text style={[styles.weekDateNumber, isCurrentDay && styles.todayText]}>
-                  {date.getDate()}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Week time grid */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weekScrollView}>
-          <View style={styles.weekTimeGridContainer}>
-            {/* Time labels column */}
-            <View style={styles.weekTimeLabelsColumn}>
-              {HOURS.map((hour) => (
-                <View key={hour} style={styles.weekTimeSlot}>
-                  <View style={styles.weekTimeLabel}>
-                    <Text style={styles.weekTimeLabelText}>{hour}h</Text>
-                  </View>
+      <ScrollView style={styles.weekOuterScroll} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={true}>
+        <View style={styles.weekTimeGridContainerRow}>
+          <View style={styles.weekTimeLabelsColumn}>
+            {HOURS.map((hour) => (
+              <View key={hour} style={[styles.weekTimeSlot, { height: SLOT_HEIGHT }]}>
+                <View style={[styles.weekTimeLabel, { backgroundColor: colors.card, borderRightColor: colors.accent }]}>
+                  <Text style={[styles.weekTimeLabelText, { color: colors.textSecondary }]}>{hour}h</Text>
                 </View>
-              ))}
-            </View>
-
-            {/* Days columns */}
-            {weekDates.map((date, dayIndex) => (
-              <View key={dayIndex} style={styles.weekDayColumn}>
-                {renderWeekTimeGrid(date, dayIndex)}
               </View>
             ))}
           </View>
-        </ScrollView>
-      </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'flex-start' }}>
+            <View style={styles.weekDaysColumns}>
+              {weekDates.map((date, dayIndex) => {
+                const isCurrentDay = isToday(date);
+                return (
+                  <View key={dayIndex} style={styles.weekDayColumn}>
+                    <View style={[styles.weekDayHeader, isCurrentDay && { backgroundColor: colors.highlight }]}>
+                      <Text style={[styles.weekDayHeaderText, { color: colors.text }, isCurrentDay && { color: colors.primary }]}>
+                        {DAYS_OF_WEEK[dayIndex]}
+                      </Text>
+                      <Text style={[styles.weekDateNumber, { color: colors.text }, isCurrentDay && { color: colors.primary }]}>
+                        {date.getDate()}
+                      </Text>
+                    </View>
+
+                    {renderWeekTimeGrid(date, dayIndex)}
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      </ScrollView>
     );
   };
 
   return (
-    <SafeAreaView style={commonStyles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={commonStyles.title}>🕒 Emploi du temps</Text>
-        
-        <View style={styles.headerControls}>
-          <View style={styles.viewToggle}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={[styles.header, { borderBottomColor: colors.accent }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.goalsTitle, { color: colors.text }]}>🕒 Emploi{"\n"}du temps</Text>
+        </View>
+
+        <View style={[styles.headerControls, { flexShrink: 0 }]}>
+          <TouchableOpacity
+            style={[styles.themeButton, { backgroundColor: colors.card }]}
+            onPress={toggleTheme}
+          >
+            <Text style={styles.themeIcon}>{theme === 'light' ? '🌙' : '🌞'}</Text>
+          </TouchableOpacity>
+
+          <View style={[styles.viewToggle, { backgroundColor: colors.highlight }]}>
             <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'day' && styles.activeToggle]}
+              style={[styles.toggleButton, viewMode === 'day' && { backgroundColor: colors.primary }]}
               onPress={() => setViewMode('day')}
             >
-              <Text style={[styles.toggleText, viewMode === 'day' && styles.activeToggleText]}>
+              <Text style={[styles.toggleText, { color: colors.text }, viewMode === 'day' && styles.activeToggleText]}>
                 Jour
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'week' && styles.activeToggle]}
+              style={[styles.toggleButton, viewMode === 'week' && { backgroundColor: colors.primary }]}
               onPress={() => setViewMode('week')}
             >
-              <Text style={[styles.toggleText, viewMode === 'week' && styles.activeToggleText]}>
+              <Text style={[styles.toggleText, { color: colors.text }, viewMode === 'week' && styles.activeToggleText]}>
                 Semaine
               </Text>
             </TouchableOpacity>
           </View>
-          
+
           <TouchableOpacity
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
             onPress={() => setShowAddModal(true)}
           >
             <IconSymbol name="plus" size={24} color="white" />
@@ -490,7 +417,6 @@ export default function ScheduleScreen() {
         </View>
       </View>
 
-      {/* Navigation */}
       <View style={styles.navigation}>
         <TouchableOpacity
           style={styles.navButton}
@@ -504,10 +430,10 @@ export default function ScheduleScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={styles.todayButton}
+          style={[styles.todayButton, { backgroundColor: colors.primary }]}
           onPress={() => setSelectedDate(new Date())}
         >
-          <Text style={commonStyles.buttonTextLight}>Aujourd'hui</Text>
+          <Text style={styles.todayButtonText}>Aujourd'hui</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -522,165 +448,23 @@ export default function ScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
       <View style={styles.content}>
         {viewMode === 'day' ? renderDayView() : renderWeekView()}
       </View>
 
-      {/* Add Event Modal */}
-      <Modal
+      <AddEventModal
         visible={showAddModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={[commonStyles.container, styles.modalContainer]}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowAddModal(false)}>
-              <Text style={styles.cancelButton}>Annuler</Text>
-            </TouchableOpacity>
-            <Text style={commonStyles.subtitle}>Nouvel événement</Text>
-            <TouchableOpacity onPress={addEvent}>
-              <Text style={styles.saveButton}>Ajouter</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {/* Title */}
-            <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Titre</Text>
-              <TextInput
-                style={styles.textInput}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Nom de l'événement"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            {/* Color Selection */}
-            <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Couleur</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.colorPicker}>
-                  {COLORS.map((color) => (
-                    <TouchableOpacity
-                      key={color}
-                      style={[
-                        styles.colorOption,
-                        { backgroundColor: color },
-                        selectedColor === color && styles.selectedColor
-                      ]}
-                      onPress={() => setSelectedColor(color)}
-                    />
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-
-            {/* Time Selection */}
-            <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Heure de début</Text>
-              <TouchableOpacity
-                style={styles.timeButton}
-                onPress={() => setShowStartTimePicker(true)}
-              >
-                <Text style={commonStyles.text}>{formatTime(startTime)}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={commonStyles.text}>Heure de fin</Text>
-              <TouchableOpacity
-                style={styles.timeButton}
-                onPress={() => setShowEndTimePicker(true)}
-              >
-                <Text style={commonStyles.text}>{formatTime(endTime)}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Recurring */}
-            <View style={styles.formGroup}>
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setIsRecurring(!isRecurring)}
-              >
-                <View style={[styles.checkbox, isRecurring && styles.checkedBox]}>
-                  {isRecurring && <IconSymbol name="checkmark" size={16} color="white" />}
-                </View>
-                <Text style={commonStyles.text}>Répéter</Text>
-              </TouchableOpacity>
-            </View>
-
-            {isRecurring && (
-              <View style={styles.formGroup}>
-                <Text style={commonStyles.text}>Fréquence</Text>
-                <View style={styles.recurrenceOptions}>
-                  {[
-                    { key: 'daily', label: 'Quotidien' },
-                    { key: 'weekly', label: 'Hebdomadaire' },
-                    { key: 'monthly', label: 'Mensuel' }
-                  ].map((option) => (
-                    <TouchableOpacity
-                      key={option.key}
-                      style={[
-                        styles.recurrenceOption,
-                        recurrenceType === option.key && styles.selectedRecurrence
-                      ]}
-                      onPress={() => setRecurrenceType(option.key as any)}
-                    >
-                      <Text style={[
-                        commonStyles.text,
-                        recurrenceType === option.key && styles.selectedRecurrenceText
-                      ]}>
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-          </ScrollView>
-
-          {/* Time Pickers */}
-          {showStartTimePicker && (
-            <DateTimePicker
-              value={startTime}
-              mode="time"
-              is24Hour={true}
-              display="default"
-              onChange={(event, selectedTime) => {
-                setShowStartTimePicker(Platform.OS === 'ios');
-                if (selectedTime) {
-                  setStartTime(selectedTime);
-                  // Auto-adjust end time to be 1 hour later
-                  const newEndTime = new Date(selectedTime.getTime() + 60 * 60 * 1000);
-                  setEndTime(newEndTime);
-                }
-              }}
-            />
-          )}
-
-          {showEndTimePicker && (
-            <DateTimePicker
-              value={endTime}
-              mode="time"
-              is24Hour={true}
-              display="default"
-              onChange={(event, selectedTime) => {
-                setShowEndTimePicker(Platform.OS === 'ios');
-                if (selectedTime) {
-                  setEndTime(selectedTime);
-                }
-              }}
-            />
-          )}
-        </SafeAreaView>
-      </Modal>
+        onClose={() => setShowAddModal(false)}
+        onSave={addEvent}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -688,16 +472,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   headerControls: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
+  themeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeIcon: {
+    fontSize: 20,
+  },
   viewToggle: {
     flexDirection: 'row',
-    backgroundColor: colors.highlight,
     borderRadius: 8,
     padding: 2,
   },
@@ -707,18 +499,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   activeToggle: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#26A69A',
   },
   toggleText: {
     fontSize: 14,
-    color: colors.text,
   },
   activeToggleText: {
     color: 'white',
     fontWeight: '600',
   },
   addButton: {
-    backgroundColor: colors.primary,
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -736,10 +526,14 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   todayButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+  },
+  todayButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
   content: {
     flex: 1,
@@ -752,6 +546,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 16,
     textTransform: 'capitalize',
+    fontSize: 18,
+    fontWeight: '600',
   },
   timeGrid: {
     flex: 1,
@@ -770,13 +566,10 @@ const styles = StyleSheet.create({
     width: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.card,
     borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
   },
   timeLabelText: {
     fontSize: 12,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
   timeSlotContent: {
@@ -789,7 +582,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: '#F0F0F0',
   },
   timeGridEvent: {
     position: 'absolute',
@@ -797,7 +589,11 @@ const styles = StyleSheet.create({
     right: 8,
     borderRadius: 6,
     padding: 6,
-    ...commonStyles.shadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
     zIndex: 1,
   },
   eventContent: {
@@ -812,12 +608,10 @@ const styles = StyleSheet.create({
   timeGridEventTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 2,
   },
   timeGridEventTime: {
     fontSize: 10,
-    color: colors.textSecondary,
   },
   timeGridEventRecurrence: {
     fontSize: 10,
@@ -832,7 +626,11 @@ const styles = StyleSheet.create({
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    ...commonStyles.shadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   currentTimeLine: {
     position: 'absolute',
@@ -854,55 +652,24 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: '#FF0000',
   },
-  // Week view styles
-  weekView: {
+  weekOuterScroll: {
     flex: 1,
-    paddingVertical: 16,
   },
-  weekHeader: {
+  weekTimeGridContainerRow: {
     flexDirection: 'row',
-    marginBottom: 16,
-    paddingHorizontal: 8,
+    alignItems: 'flex-start',
   },
-  weekTimeHeaderSpace: {
-    width: 60,
-  },
-  weekDayHeader: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    marginHorizontal: 2,
-    borderRadius: 8,
-  },
-  todayDayHeader: {
-    backgroundColor: colors.highlight,
-  },
-  weekDayHeaderText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  weekDateNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  todayText: {
-    color: colors.primary,
-  },
-  weekScrollView: {
-    flex: 1,
-  },
-  weekTimeGridContainer: {
+  weekDaysColumns: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   weekTimeLabelsColumn: {
     width: 60,
   },
   weekDayColumn: {
-    width: 100,
+    width: 110,
     marginRight: 1,
+    position: 'relative',
   },
   weekDayTimeGrid: {
     flex: 1,
@@ -920,13 +687,10 @@ const styles = StyleSheet.create({
     width: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.card,
     borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
   },
   weekTimeLabelText: {
     fontSize: 10,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
   weekTimeSlotContent: {
@@ -939,7 +703,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: '#F5F5F5',
   },
   weekTimeGridEvent: {
     position: 'absolute',
@@ -961,12 +724,10 @@ const styles = StyleSheet.create({
   weekTimeGridEventTitle: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 1,
   },
   weekTimeGridEventTime: {
     fontSize: 8,
-    color: colors.textSecondary,
   },
   weekEventDeleteButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -996,152 +757,25 @@ const styles = StyleSheet.create({
     height: 1.5,
     backgroundColor: '#FF0000',
   },
-  eventsContainer: {
-    flex: 1,
-  },
-  noEvents: {
-    textAlign: 'center',
-    marginTop: 40,
-    fontStyle: 'italic',
-  },
-  eventCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    ...commonStyles.shadow,
-  },
-  eventCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  eventCardInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  eventTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  eventTime: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  eventRecurrence: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  eventCardDeleteButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
+  weekDayHeader: {
     alignItems: 'center',
-    ...commonStyles.shadow,
-  },
-  modalContainer: {
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
-  },
-  cancelButton: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  saveButton: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  formGroup: {
-    marginBottom: 24,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.card,
-    marginTop: 8,
-  },
-  colorPicker: {
-    flexDirection: 'row',
-    gap: 12,
     paddingVertical: 8,
+    backgroundColor: 'transparent',
   },
-  colorOption: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  selectedColor: {
-    borderColor: colors.text,
-    borderWidth: 3,
-  },
-  timeButton: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: colors.card,
-    marginTop: 8,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkedBox: {
-    backgroundColor: colors.primary,
-  },
-  recurrenceOptions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  recurrenceOption: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    backgroundColor: colors.card,
-  },
-  selectedRecurrence: {
-    backgroundColor: colors.primary,
-  },
-  selectedRecurrenceText: {
-    color: 'white',
+  weekDayHeaderText: {
+    fontSize: 12,
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  weekDateNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  goalsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'left',
+    lineHeight: 28,
+    flexShrink: 1,
   },
 });
