@@ -39,3 +39,10 @@ export interface GoalStats {
   longestStreak: number;
   completionRate: number;
 }
+
+export interface MemoryItem {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}

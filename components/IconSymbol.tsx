@@ -1,3 +1,4 @@
+
 // This file is a fallback for using MaterialIcons on Android and web.
 
 import React from "react";
@@ -28,6 +29,7 @@ const MAPPING = {
   "chevron.down": "keyboard-arrow-down",
   "arrow.clockwise": "refresh",
   "arrow.counterclockwise": "refresh",
+  "forward.fill": "fast-forward",
 
   // Communication & Social
   "paperplane.fill": "send",
@@ -95,12 +97,14 @@ const MAPPING = {
   // Shapes & Symbols
   "square": "square",
   "square.grid.3x3": "apps",
+  "square.grid.2x2": "grid-view",
   "circle": "circle",
   "triangle.fill": "change-history",
   "star.fill": "star",
   "star": "star-border",
   "bookmark.fill": "bookmark",
   "bookmark": "bookmark-border",
+  "target": "track-changes",
 
   // Technology & Code
   "chevron.left.forwardslash.chevron.right": "code",

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Vibration,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -200,6 +201,10 @@ export default function PomodoroScreen() {
     ? 1 - (timeLeft / (breakDuration * 60))
     : 1 - (timeLeft / (longBreakDuration * 60));
 
+  // Adjust icon sizes for Android
+  const iconSize = Platform.OS === 'android' ? 20 : 28;
+  const mainIconSize = Platform.OS === 'android' ? 24 : 32;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
@@ -315,7 +320,7 @@ export default function PomodoroScreen() {
           style={[styles.controlButton, styles.resetButton, { backgroundColor: colors.card }]}
           onPress={handleReset}
         >
-          <IconSymbol name="arrow.clockwise" size={28} color={colors.text} />
+          <IconSymbol name="arrow.clockwise" size={iconSize} color={colors.text} />
           <Text style={[styles.controlButtonText, { color: colors.text }]}>Reset</Text>
         </TouchableOpacity>
 
@@ -329,7 +334,7 @@ export default function PomodoroScreen() {
         >
           <IconSymbol
             name={isRunning ? 'pause.fill' : 'play.fill'}
-            size={32}
+            size={mainIconSize}
             color="white"
           />
           <Text style={styles.mainButtonText}>{isRunning ? 'Pause' : 'Start'}</Text>
@@ -341,7 +346,7 @@ export default function PomodoroScreen() {
             handleTimerComplete();
           }}
         >
-          <IconSymbol name="forward.fill" size={28} color={colors.text} />
+          <IconSymbol name="forward.fill" size={iconSize} color={colors.text} />
           <Text style={[styles.controlButtonText, { color: colors.text }]}>Skip</Text>
         </TouchableOpacity>
       </View>

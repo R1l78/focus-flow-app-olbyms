@@ -1,7 +1,8 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { loadTasks, loadGoals, loadDailyProgress, formatDate } from '@/utils/storage';
+import { loadTasks, loadGoals, loadDailyProgress, loadMemoryItems, formatDate } from '@/utils/storage';
+import { MemoryItem } from '@/types';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -29,7 +30,7 @@ export class NotificationService {
         return false;
       }
 
-      // For Android, create notification channel
+      // For Android, create notification channels
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('focusflow-reminders', {
           name: 'FocusFlow Reminders',
@@ -43,6 +44,13 @@ export class NotificationService {
           importance: Notifications.AndroidImportance.DEFAULT,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#26A69A',
+        });
+
+        await Notifications.setNotificationChannelAsync('focusflow-memory', {
+          name: 'FocusFlow Memory',
+          importance: Notifications.AndroidImportance.DEFAULT,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#4DB8AC',
         });
       }
 
@@ -248,6 +256,87 @@ export class NotificationService {
     }
   }
 
+  static async scheduleMemoryNotifications(memoryItems: MemoryItem[]): Promise<void> {
+    try {
+      // Cancel existing memory notifications
+      await this.cancelNotification('memory-morning');
+      await this.cancelNotification('memory-noon');
+      await this.cancelNotification('memory-evening');
+
+      if (!memoryItems || memoryItems.length === 0) {
+        console.log('No memory items to schedule notifications for');
+        return;
+      }
+
+      // Morning notification (9:00 AM)
+      const morningItem = memoryItems[Math.floor(Math.random() * memoryItems.length)];
+      const morningExcerpt = morningItem.content.length > 60 
+        ? morningItem.content.substring(0, 60) + '...' 
+        : morningItem.content;
+
+      await Notifications.scheduleNotificationAsync({
+        identifier: 'memory-morning',
+        content: {
+          title: `🧠 ${morningItem.title}`,
+          body: morningExcerpt,
+          data: { type: 'memory', itemId: morningItem.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: 9,
+          minute: 0,
+          repeats: true,
+        },
+      });
+
+      // Noon notification (1:00 PM)
+      const noonItem = memoryItems[Math.floor(Math.random() * memoryItems.length)];
+      const noonExcerpt = noonItem.content.length > 60 
+        ? noonItem.content.substring(0, 60) + '...' 
+        : noonItem.content;
+
+      await Notifications.scheduleNotificationAsync({
+        identifier: 'memory-noon',
+        content: {
+          title: `🧠 ${noonItem.title}`,
+          body: noonExcerpt,
+          data: { type: 'memory', itemId: noonItem.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: 13,
+          minute: 0,
+          repeats: true,
+        },
+      });
+
+      // Evening notification (7:00 PM)
+      const eveningItem = memoryItems[Math.floor(Math.random() * memoryItems.length)];
+      const eveningExcerpt = eveningItem.content.length > 60 
+        ? eveningItem.content.substring(0, 60) + '...' 
+        : eveningItem.content;
+
+      await Notifications.scheduleNotificationAsync({
+        identifier: 'memory-evening',
+        content: {
+          title: `🧠 ${eveningItem.title}`,
+          body: eveningExcerpt,
+          data: { type: 'memory', itemId: eveningItem.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: 19,
+          minute: 0,
+          repeats: true,
+        },
+      });
+
+      console.log('Memory notifications scheduled for 3 times per day');
+    } catch (error) {
+      console.error('Error scheduling memory notifications:', error);
+    }
+  }
+
   static async cancelNotification(identifier: string): Promise<void> {
     try {
       await Notifications.cancelScheduledNotificationAsync(identifier);
@@ -274,6 +363,11 @@ export class NotificationService {
         await this.scheduleWeeklyReminders();
         await this.schedulePrioritiesReminders();
         await this.updateDailyGoalsNotification();
+        
+        // Initialize memory notifications
+        const memoryItems = await loadMemoryItems();
+        await this.scheduleMemoryNotifications(memoryItems);
+        
         console.log('All notifications initialized successfully');
       } else {
         console.log('Notifications not initialized - permissions not granted');

@@ -38,8 +38,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Accueil',
-          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" size={28} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -54,7 +53,7 @@ export default function TabLayout() {
         name="priorities"
         options={{
           title: 'Priorités',
-          tabBarIcon: ({ color }) => <IconSymbol name="square.grid.2x2" size={28} color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="square.grid.3x3" size={28} color={color} />,
           headerShown: false,
         }}
       />
@@ -71,6 +70,14 @@ export default function TabLayout() {
         options={{
           title: 'Pomodoro',
           tabBarIcon: ({ color }) => <IconSymbol name="timer" size={28} color={color} />,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="memory"
+        options={{
+          title: 'Mémoire',
+          tabBarIcon: ({ color }) => <IconSymbol name="lightbulb.fill" size={28} color={color} />,
           headerShown: false,
         }}
       />

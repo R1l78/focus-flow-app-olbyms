@@ -1,12 +1,13 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Event, Task, Goal, DailyGoalProgress } from '../types';
+import { Event, Task, Goal, DailyGoalProgress, MemoryItem } from '../types';
 
 const STORAGE_KEYS = {
   EVENTS: '@focusflow_events',
   TASKS: '@focusflow_tasks',
   GOALS: '@focusflow_goals',
   DAILY_PROGRESS: '@focusflow_daily_progress',
+  MEMORY_ITEMS: '@focusflow_memory_items',
 };
 
 // Events Storage
@@ -105,6 +106,31 @@ export const loadDailyProgress = async (): Promise<DailyGoalProgress[]> => {
     return [];
   } catch (error) {
     console.error('Error loading daily progress:', error);
+    return [];
+  }
+};
+
+// Memory Items Storage
+export const saveMemoryItems = async (items: MemoryItem[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.MEMORY_ITEMS, JSON.stringify(items));
+    console.log('Memory items saved successfully');
+  } catch (error) {
+    console.error('Error saving memory items:', error);
+  }
+};
+
+export const loadMemoryItems = async (): Promise<MemoryItem[]> => {
+  try {
+    const itemsJson = await AsyncStorage.getItem(STORAGE_KEYS.MEMORY_ITEMS);
+    if (itemsJson) {
+      const items = JSON.parse(itemsJson);
+      console.log('Memory items loaded successfully:', items.length);
+      return items;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error loading memory items:', error);
     return [];
   }
 };

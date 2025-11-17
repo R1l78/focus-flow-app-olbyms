@@ -16,7 +16,8 @@ import { saveEvents, loadEvents, generateId, formatDate, formatTime } from '@/ut
 import AddEventModal from '@/components/AddEventModal';
 
 const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const SLOT_HEIGHT = 60;
+const DAY_SLOT_HEIGHT = 60;
+const WEEK_SLOT_HEIGHT = 50;
 const HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
 
 export default function ScheduleScreen() {
@@ -134,9 +135,11 @@ export default function ScheduleScreen() {
 
     if (hours < 6 || hours > 23) return -1;
 
-    const hourIndex = hours - 6;
+    const hoursSince6AM = hours - 6;
     const minutePercentage = minutes / 60;
-    return (hourIndex + minutePercentage) * 60;
+    const totalHours = hoursSince6AM + minutePercentage;
+    
+    return totalHours * DAY_SLOT_HEIGHT;
   };
 
   const getCurrentTimePositionWeek = (): number => {
@@ -146,9 +149,11 @@ export default function ScheduleScreen() {
 
     if (hours < 6 || hours > 23) return -1;
 
-    const hourIndex = hours - 6;
+    const hoursSince6AM = hours - 6;
     const minutePercentage = minutes / 60;
-    return (hourIndex + minutePercentage) * 50;
+    const totalHours = hoursSince6AM + minutePercentage;
+    
+    return totalHours * WEEK_SLOT_HEIGHT;
   };
 
   const isToday = (date: Date): boolean => {
@@ -165,7 +170,7 @@ export default function ScheduleScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.timeGridContent}>
             {HOURS.map((hour) => (
-              <View key={hour} style={styles.timeSlot}>
+              <View key={hour} style={[styles.timeSlot, { height: DAY_SLOT_HEIGHT }]}>
                 <View style={[styles.timeLabel, { backgroundColor: colors.card, borderRightColor: colors.accent }]}>
                   <Text style={[styles.timeLabelText, { color: colors.textSecondary }]}>{hour}h</Text>
                 </View>
@@ -181,7 +186,7 @@ export default function ScheduleScreen() {
                       const eventEnd = new Date(event.endTime);
                       const startMinutes = eventStart.getMinutes();
                       const duration = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60);
-                      const height = Math.max((duration / 60) * 60, 30);
+                      const height = Math.max((duration / 60) * DAY_SLOT_HEIGHT, 30);
                       
                       return (
                         <View
@@ -190,7 +195,7 @@ export default function ScheduleScreen() {
                             styles.timeGridEvent,
                             {
                               backgroundColor: event.color,
-                              top: startMinutes,
+                              top: (startMinutes / 60) * DAY_SLOT_HEIGHT,
                               height: height,
                             }
                           ]}
@@ -226,7 +231,7 @@ export default function ScheduleScreen() {
               <View 
                 style={[
                   styles.currentTimeLine,
-                  { top: currentTimePosition - 5 }
+                  { top: currentTimePosition }
                 ]}
               >
                 <View style={styles.currentTimeCircle} />
@@ -248,7 +253,7 @@ export default function ScheduleScreen() {
       <View style={styles.weekDayTimeGrid}>
         <View style={styles.weekTimeGridContent}>
           {HOURS.map((hour) => (
-            <View key={hour} style={[styles.weekTimeSlot, { height: SLOT_HEIGHT }]}>
+            <View key={hour} style={[styles.weekTimeSlot, { height: WEEK_SLOT_HEIGHT }]}>
               <View style={styles.weekTimeSlotContent}>
                 <View style={[styles.weekTimeSlotLine, { backgroundColor: colors.accent }]} />
                 {dayEvents
@@ -261,7 +266,7 @@ export default function ScheduleScreen() {
                     const eventEnd = new Date(event.endTime);
                     const startMinutes = eventStart.getMinutes();
                     const durationMinutes = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60);
-                    const height = Math.max((durationMinutes / 60) * SLOT_HEIGHT, 20);
+                    const height = Math.max((durationMinutes / 60) * WEEK_SLOT_HEIGHT, 20);
 
                     return (
                       <View
@@ -270,7 +275,7 @@ export default function ScheduleScreen() {
                           styles.weekTimeGridEvent,
                           {
                             backgroundColor: event.color,
-                            top: (startMinutes / 60) * SLOT_HEIGHT,
+                            top: (startMinutes / 60) * WEEK_SLOT_HEIGHT,
                             height,
                           }
                         ]}
@@ -340,7 +345,7 @@ export default function ScheduleScreen() {
         <View style={styles.weekTimeGridContainerRow}>
           <View style={styles.weekTimeLabelsColumn}>
             {HOURS.map((hour) => (
-              <View key={hour} style={[styles.weekTimeSlot, { height: SLOT_HEIGHT }]}>
+              <View key={hour} style={[styles.weekTimeSlot, { height: WEEK_SLOT_HEIGHT }]}>
                 <View style={[styles.weekTimeLabel, { backgroundColor: colors.card, borderRightColor: colors.accent }]}>
                   <Text style={[styles.weekTimeLabelText, { color: colors.textSecondary }]}>{hour}h</Text>
                 </View>
@@ -558,7 +563,6 @@ const styles = StyleSheet.create({
   },
   timeSlot: {
     flexDirection: 'row',
-    height: 60,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
@@ -679,7 +683,6 @@ const styles = StyleSheet.create({
   },
   weekTimeSlot: {
     flexDirection: 'row',
-    height: 50,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
   },
